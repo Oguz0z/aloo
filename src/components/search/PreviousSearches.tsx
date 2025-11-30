@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
 import { Bookmark } from 'lucide-react';
 import type { Platform, SavedSearchWithResults } from '@/types';
 
@@ -58,6 +58,39 @@ export function addSearchToHistory(query: string, platform: Platform): void {
   saveSearchHistory(updated);
 }
 
+// Subscribe to search history changes for useSyncExternalStore
+function subscribeToSearchHistory(callback: () => void): () => void {
+  window.addEventListener(HISTORY_UPDATE_EVENT, callback);
+  window.addEventListener('storage', callback);
+  return () => {
+    window.removeEventListener(HISTORY_UPDATE_EVENT, callback);
+    window.removeEventListener('storage', callback);
+  };
+}
+
+// Cache for snapshots to prevent infinite loops
+let cachedHistory: SearchHistory[] | null = null;
+let cachedHistoryString: string | null = null;
+
+function getSearchHistorySnapshot(): SearchHistory[] {
+  const currentString = typeof window !== 'undefined'
+    ? localStorage.getItem(STORAGE_KEY)
+    : null;
+
+  if (currentString !== cachedHistoryString) {
+    cachedHistoryString = currentString;
+    cachedHistory = currentString ? JSON.parse(currentString) : [];
+  }
+
+  return cachedHistory ?? [];
+}
+
+// Server snapshot - cached empty array
+const emptyArray: SearchHistory[] = [];
+function getServerSnapshot(): SearchHistory[] {
+  return emptyArray;
+}
+
 const TABS: { id: Platform | 'all' | 'saved'; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'youtube', label: 'YouTube' },
@@ -76,20 +109,14 @@ export function PreviousSearches({
   onSavedSearchSelect,
 }: PreviousSearchesProps) {
   const [activeTab, setActiveTab] = useState<Platform | 'all' | 'saved'>('all');
-  const [searches, setSearches] = useState<SearchHistory[]>(getSearchHistory);
   const [savedSearches, setSavedSearches] = useState<SavedSearchWithResults[] | null>(null);
 
-  // Listen for search history updates
-  useEffect(() => {
-    const handleUpdate = () => setSearches(getSearchHistory());
-    window.addEventListener(HISTORY_UPDATE_EVENT, handleUpdate);
-    window.addEventListener('storage', handleUpdate);
-
-    return () => {
-      window.removeEventListener(HISTORY_UPDATE_EVENT, handleUpdate);
-      window.removeEventListener('storage', handleUpdate);
-    };
-  }, []);
+  // Use useSyncExternalStore to safely read from localStorage without hydration mismatch
+  const searches = useSyncExternalStore(
+    subscribeToSearchHistory,
+    getSearchHistorySnapshot,
+    getServerSnapshot
+  );
 
   // Fetch saved searches when tab changes to 'saved'
   useEffect(() => {

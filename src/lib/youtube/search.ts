@@ -24,7 +24,7 @@ export async function searchYouTube({
   order = 'relevance',
   type = 'video',
 }: YouTubeSearchOptions): Promise<YouTubeSearchResult[]> {
-  const youtube = getYouTubeClient();
+  const youtube = await getYouTubeClient();
   const response = await youtube.search.list({
     part: ['snippet'],
     q: query,

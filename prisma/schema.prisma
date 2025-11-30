@@ -116,3 +116,14 @@ model SavedItem {
   @@index([platform])
   @@index([savedAt])
 }
+
+// API Keys - stores encrypted API keys for different services
+model ApiKey {
+  id        String   @id @default(cuid())
+  service   String   @unique // e.g., "youtube", "rapidapi"
+  key       String   // encrypted API key
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([service])
+}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Bookmark, BookmarkCheck, Loader2 } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Loader2, Settings } from 'lucide-react';
 import {
   SearchInput,
   PlatformSelector,
@@ -11,6 +11,7 @@ import {
 import { WelcomeHeader } from '@/components/search/WelcomeHeader';
 import { PreLoader } from '@/components/preloader';
 import { DataTable, youtubeColumns } from '@/components/data-table';
+import { SettingsModal } from '@/components/settings';
 import { searchYouTubeWithDetails } from '@/lib/api';
 import type { Platform, YouTubeTableData, SavedSearchWithResults } from '@/types';
 
@@ -24,6 +25,7 @@ export default function Home() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [viewingSavedSearch, setViewingSavedSearch] = useState<SavedSearchWithResults | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const handleSearch = async () => {
     if (!searchQuery.trim() || isSearching) return;
@@ -96,61 +98,73 @@ export default function Home() {
   // Show results view if we have searched
   if (hasSearched) {
     return (
-      <div className="min-h-screen px-4 py-8">
-        <div className="mx-auto max-w-7xl">
-          {/* Header */}
-          <div className="mb-8 flex items-center justify-between">
-            <div>
-              <button
-                onClick={handleBackToSearch}
-                className="mb-2 text-sm text-white/60 hover:text-white transition-colors"
-              >
-                &larr; Back to search
-              </button>
-              <h1 className="text-2xl font-semibold text-white">
-                {viewingSavedSearch ? (
-                  <>Saved: &ldquo;{searchQuery}&rdquo;</>
-                ) : (
-                  <>Results for &ldquo;{searchQuery}&rdquo;</>
-                )}
-              </h1>
-              <p className="text-sm text-white/60 mt-1">
-                {isSearching ? 'Searching...' : `${tableData.length} videos found`}
-              </p>
+      <>
+        <div className="min-h-screen px-4 py-8">
+          {/* Settings Button - Top Right */}
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="fixed right-6 top-6 z-40 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.15em] text-white/50 transition-colors hover:text-white"
+          >
+            <Settings className="h-4 w-4" />
+            Settings
+          </button>
+
+          <div className="mx-auto max-w-7xl">
+            {/* Header */}
+            <div className="mb-8 flex items-center justify-between">
+              <div>
+                <button
+                  onClick={handleBackToSearch}
+                  className="mb-2 text-sm text-white/60 hover:text-white transition-colors"
+                >
+                  &larr; Back to search
+                </button>
+                <h1 className="text-2xl font-semibold text-white">
+                  {viewingSavedSearch ? (
+                    <>Saved: &ldquo;{searchQuery}&rdquo;</>
+                  ) : (
+                    <>Results for &ldquo;{searchQuery}&rdquo;</>
+                  )}
+                </h1>
+                <p className="text-sm text-white/60 mt-1">
+                  {isSearching ? 'Searching...' : `${tableData.length} videos found`}
+                </p>
+              </div>
+
+              {/* Save Button */}
+              {!isSearching && tableData.length > 0 && (
+                <button
+                  onClick={handleSaveSearch}
+                  disabled={isSaving || isSaved}
+                  className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-[11px] font-medium uppercase tracking-[0.15em] transition-all duration-200 ${
+                    isSaved
+                      ? 'border-white/30 bg-white/10 text-white/70'
+                      : 'border-white/20 bg-transparent text-white/70 hover:border-white/40 hover:text-white'
+                  }`}
+                >
+                  {isSaving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : isSaved ? (
+                    <BookmarkCheck className="h-4 w-4" />
+                  ) : (
+                    <Bookmark className="h-4 w-4" />
+                  )}
+                  {isSaved ? 'Saved' : 'Save'}
+                </button>
+              )}
             </div>
 
-            {/* Save Button */}
-            {!isSearching && tableData.length > 0 && (
-              <button
-                onClick={handleSaveSearch}
-                disabled={isSaving || isSaved}
-                className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-[11px] font-medium uppercase tracking-[0.15em] transition-all duration-200 ${
-                  isSaved
-                    ? 'border-white/30 bg-white/10 text-white/70'
-                    : 'border-white/20 bg-transparent text-white/70 hover:border-white/40 hover:text-white'
-                }`}
-              >
-                {isSaving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : isSaved ? (
-                  <BookmarkCheck className="h-4 w-4" />
-                ) : (
-                  <Bookmark className="h-4 w-4" />
-                )}
-                {isSaved ? 'Saved' : 'Save'}
-              </button>
-            )}
+            {/* Data Table */}
+            <DataTable
+              columns={youtubeColumns}
+              data={tableData}
+              isLoading={isSearching}
+              skeletonRows={10}
+            />
           </div>
-
-          {/* Data Table */}
-          <DataTable
-            columns={youtubeColumns}
-            data={tableData}
-            isLoading={isSearching}
-            skeletonRows={10}
-          />
         </div>
-      </div>
+        <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      </>
     );
   }
 
@@ -158,6 +172,15 @@ export default function Home() {
     <>
       {showPreLoader && <PreLoader onComplete={() => setShowPreLoader(false)} />}
       <div className="relative flex min-h-screen flex-col items-center justify-center px-4">
+        {/* Settings Button - Top Right */}
+        <button
+          onClick={() => setIsSettingsOpen(true)}
+          className="fixed right-6 top-6 z-40 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.15em] text-white/50 transition-colors hover:text-white"
+        >
+          <Settings className="h-4 w-4" />
+          Settings
+        </button>
+
         {/* Main content - centered */}
         <div className="flex w-full max-w-[57.75rem] flex-col items-center gap-8">
           {/* Welcome Header */}
@@ -186,6 +209,7 @@ export default function Home() {
           />
         </div>
       </div>
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </>
   );
 }

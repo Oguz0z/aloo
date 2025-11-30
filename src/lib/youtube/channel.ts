@@ -15,7 +15,7 @@ export interface YouTubeChannelDetails {
 }
 
 export async function getChannelDetails(channelId: string): Promise<YouTubeChannelDetails | null> {
-  const youtube = getYouTubeClient();
+  const youtube = await getYouTubeClient();
   const response = await youtube.channels.list({
     part: ['snippet', 'statistics'],
     id: [channelId],
@@ -44,7 +44,7 @@ export async function getChannelDetails(channelId: string): Promise<YouTubeChann
 export async function getChannelByUsername(
   username: string
 ): Promise<YouTubeChannelDetails | null> {
-  const youtube = getYouTubeClient();
+  const youtube = await getYouTubeClient();
   const response = await youtube.channels.list({
     part: ['snippet', 'statistics'],
     forHandle: username,
@@ -74,7 +74,7 @@ export async function getChannelVideos(
   channelId: string,
   maxResults: number = 25
 ): Promise<YouTubeSearchResult[]> {
-  const youtube = getYouTubeClient();
+  const youtube = await getYouTubeClient();
   const response = await youtube.search.list({
     part: ['snippet'],
     channelId,
