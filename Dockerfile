@@ -34,10 +34,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Install Prisma CLI for migrations and copy packages for config imports
-RUN npm install -g prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+# Install Prisma packages for migrations (CLI + config dependencies)
+RUN npm install -g prisma && npm install prisma @prisma/client
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
