@@ -64,6 +64,9 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('');
   const [processingSubtitle, setProcessingSubtitle] = useState<string | undefined>();
+  const [processingProgress, setProcessingProgress] = useState<
+    { current: number; total: number } | undefined
+  >();
 
   // Check if YouTube API key is configured
   useEffect(() => {
@@ -366,57 +369,149 @@ export default function Home() {
     }
   }, []);
 
-  // Handle URL repurpose - from search input
-  const handleUrlRepurpose = useCallback(
-    async (url: string) => {
-      setIsProcessing(true);
-      setProcessingStatus('Extracting transcript');
-      setProcessingSubtitle('This may take a moment...');
+  // Handle URL repurpose - from search input with streaming progress
+  const handleUrlRepurpose = useCallback(async (url: string) => {
+    setIsProcessing(true);
+    setProcessingStatus('Extracting transcript');
+    setProcessingSubtitle('Connecting to YouTube...');
+    setProcessingProgress(undefined);
 
-      try {
-        // Update status after a brief delay
-        setTimeout(() => {
-          if (isProcessing) {
-            setProcessingStatus('Repurposing transcript');
-            setProcessingSubtitle('Processing with AI...');
-          }
-        }, 3000);
+    try {
+      const response = await fetch('/api/repurpose-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+        },
+        body: JSON.stringify({ url }),
+      });
 
-        const response = await fetch('/api/repurpose-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url }),
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          toast.success(
-            data.alreadyExists
-              ? 'Script already exists'
-              : `Repurposed successfully (${data.chunksProcessed} chunks)`
-          );
-          // Refresh scripts and navigate to scripts view
-          const scriptsResponse = await fetch('/api/scripts');
-          if (scriptsResponse.ok) {
-            const scriptsData = await scriptsResponse.json();
-            setScripts(scriptsData.scripts);
-          }
-          setSearchQuery('');
-          setViewMode('scripts');
-        } else {
-          toast.error(data.error || 'Failed to repurpose');
-        }
-      } catch {
-        toast.error('Failed to repurpose');
-      } finally {
-        setIsProcessing(false);
-        setProcessingStatus('');
-        setProcessingSubtitle(undefined);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to repurpose');
       }
-    },
-    [isProcessing]
-  );
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // SSE format: "event: type\ndata: json\n\n"
+        // Split on double newlines to get complete events
+        const events = buffer.split('\n\n');
+        buffer = events.pop() || ''; // Keep incomplete event in buffer
+
+        for (const event of events) {
+          if (!event.trim()) continue;
+
+          const lines = event.split('\n');
+          let eventType = '';
+          let eventData = '';
+
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              eventType = line.slice(7);
+            } else if (line.startsWith('data: ')) {
+              eventData = line.slice(6);
+            }
+          }
+
+          if (!eventType || !eventData) continue;
+
+          const data = JSON.parse(eventData);
+
+          if (eventType === 'progress') {
+            // Map step to user-friendly status with progress indicators
+            // Steps: extracting(1) -> analyzing(2) -> processing_chunk(3-N) -> generating_hooks -> finalizing(N+1)
+            const stepMessages: Record<
+              string,
+              { status: string; subtitle: string; baseProgress: number }
+            > = {
+              extracting: {
+                status: 'Extracting transcript',
+                subtitle: 'Fetching video content...',
+                baseProgress: 10,
+              },
+              analyzing: {
+                status: 'Analyzing content',
+                subtitle: 'Preparing for repurposing...',
+                baseProgress: 20,
+              },
+              processing_chunk: {
+                status: 'Repurposing content',
+                subtitle: 'AI is transforming your script...',
+                baseProgress: 30, // 30-85% range for chunks
+              },
+              generating_hooks: {
+                status: 'Generating hooks',
+                subtitle: 'Creating engaging openers...',
+                baseProgress: 90,
+              },
+              finalizing: {
+                status: 'Finalizing',
+                subtitle: 'Almost done...',
+                baseProgress: 95,
+              },
+            };
+
+            const stepInfo = stepMessages[data.step] || {
+              status: data.message,
+              subtitle: '',
+              baseProgress: 50,
+            };
+            setProcessingStatus(stepInfo.status);
+            setProcessingSubtitle(stepInfo.subtitle);
+
+            // Calculate progress based on step
+            if (data.step === 'processing_chunk' && data.current && data.total) {
+              // Chunk processing: 30% to 85%
+              const chunkProgress = (data.current / data.total) * 55 + 30;
+              setProcessingProgress({
+                current: Math.round(chunkProgress),
+                total: 100,
+              });
+            } else {
+              // Other steps: use base progress
+              setProcessingProgress({
+                current: stepInfo.baseProgress,
+                total: 100,
+              });
+            }
+          } else if (eventType === 'complete') {
+            toast.success(
+              data.alreadyExists
+                ? 'Script already exists'
+                : `Repurposed successfully (${data.chunksProcessed} chunks)`
+            );
+            // Refresh scripts and navigate to scripts view
+            const scriptsResponse = await fetch('/api/scripts');
+            if (scriptsResponse.ok) {
+              const scriptsData = await scriptsResponse.json();
+              setScripts(scriptsData.scripts);
+            }
+            setSearchQuery('');
+            setViewMode('scripts');
+          } else if (eventType === 'error') {
+            throw new Error(data.error || 'Failed to repurpose');
+          }
+        }
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to repurpose');
+    } finally {
+      setIsProcessing(false);
+      setProcessingStatus('');
+      setProcessingSubtitle(undefined);
+      setProcessingProgress(undefined);
+    }
+  }, []);
 
   // Memoized columns
   const memoizedRepurposeColumns = useMemo(
@@ -447,7 +542,7 @@ export default function Home() {
     return (
       <>
         {isProcessing && (
-          <ProcessingLoader status={processingStatus} subtitle={processingSubtitle} />
+          <ProcessingLoader status={processingStatus} subtitle={processingSubtitle} progress={processingProgress} />
         )}
         <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
           <div className="mx-auto max-w-7xl">
@@ -643,7 +738,7 @@ export default function Home() {
     return (
       <>
         {isProcessing && (
-          <ProcessingLoader status={processingStatus} subtitle={processingSubtitle} />
+          <ProcessingLoader status={processingStatus} subtitle={processingSubtitle} progress={processingProgress} />
         )}
         <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
           <div className="mx-auto max-w-7xl">
@@ -739,16 +834,16 @@ export default function Home() {
   return (
     <>
       {showPreLoader && <PreLoader onComplete={() => setShowPreLoader(false)} />}
-      {isProcessing && <ProcessingLoader status={processingStatus} subtitle={processingSubtitle} />}
+      {isProcessing && <ProcessingLoader status={processingStatus} subtitle={processingSubtitle} progress={processingProgress} />}
       <div className="relative flex min-h-screen flex-col items-center justify-center px-3 sm:px-4">
         {/* Top Right Controls */}
-        <div className="fixed right-3 top-3 sm:right-6 sm:top-6 z-40 flex items-center gap-3 sm:gap-6">
+        <div className="fixed right-3 top-3 sm:right-6 sm:top-6 z-40 flex items-center gap-3">
           <UserMenu />
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] font-medium uppercase tracking-[0.1em] sm:tracking-[0.15em] text-white/50 transition-colors hover:text-white min-h-[44px] px-2"
+            className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/70 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white active:scale-95"
           >
-            <Settings className="h-4 w-4" />
+            <Settings className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Settings</span>
           </button>
         </div>

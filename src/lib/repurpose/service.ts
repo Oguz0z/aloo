@@ -19,6 +19,22 @@ export interface RepurposeResult {
   chunksProcessed: number;
 }
 
+export type ProgressStep =
+  | 'extracting'
+  | 'analyzing'
+  | 'processing_chunk'
+  | 'generating_hooks'
+  | 'finalizing';
+
+export interface ProgressUpdate {
+  step: ProgressStep;
+  message: string;
+  current?: number;
+  total?: number;
+}
+
+export type ProgressCallback = (update: ProgressUpdate) => void | Promise<void>;
+
 /**
  * Get user's selected model
  */
@@ -119,10 +135,13 @@ async function repurposeChunk(
  */
 export async function repurposeTranscript(
   userId: string,
-  transcript: string
+  transcript: string,
+  onProgress?: ProgressCallback
 ): Promise<RepurposeResult> {
   // Get user's selected model
   const model = await getUserModel(userId);
+
+  await onProgress?.({ step: 'analyzing', message: 'Analyzing transcript structure' });
 
   // Chunk the transcript
   const chunks = chunkTranscript(transcript);
@@ -132,13 +151,24 @@ export async function repurposeTranscript(
 
   // Start hooks generation immediately (runs in parallel with chunk processing)
   // This is safe because hooks are generated from the original transcript, not repurposed output
-  const hooksPromise = generateHooks(userId, model, originalHook);
+  const hooksPromise = generateHooks(userId, model, originalHook).then(async (hooks) => {
+    await onProgress?.({ step: 'generating_hooks', message: 'Generated engagement hooks' });
+    return hooks;
+  });
 
   // Process chunks sequentially to maintain flow
   const repurposedParts: string[] = [];
   let previousContext: string | null = null;
 
-  for (const chunk of chunks) {
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    await onProgress?.({
+      step: 'processing_chunk',
+      message: `Repurposing content`,
+      current: i + 1,
+      total: chunks.length,
+    });
+
     const repurposedChunk = await repurposeChunk(
       userId,
       model,
@@ -154,6 +184,8 @@ export async function repurposeTranscript(
       previousContext = extractContextBridge(repurposedChunk);
     }
   }
+
+  await onProgress?.({ step: 'finalizing', message: 'Finalizing script' });
 
   // Combine all repurposed parts
   const repurposedScript = repurposedParts.join('\n\n');

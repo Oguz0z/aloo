@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getYouTubeTranscript } from '@/lib/rapidapi';
-import { repurposeTranscript } from '@/lib/repurpose';
+import { repurposeTranscript, type ProgressUpdate } from '@/lib/repurpose';
 import { requireValidUser } from '@/lib/auth-utils';
 import { isApiError } from '@/lib/errors';
+
+// Force dynamic rendering and disable buffering
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 /**
  * Extract YouTube video ID from various URL formats
@@ -46,8 +50,177 @@ async function getYouTubeTitle(url: string): Promise<string | null> {
   }
 }
 
-// POST - Extract transcript from URL and repurpose it
+// POST - Extract transcript from URL and repurpose it with streaming progress
 export async function POST(request: NextRequest) {
+  // Check if client wants streaming
+  const acceptHeader = request.headers.get('accept');
+  const wantsStream = acceptHeader?.includes('text/event-stream');
+
+  if (wantsStream) {
+    return handleStreamingRequest(request);
+  }
+
+  return handleNonStreamingRequest(request);
+}
+
+// Streaming version with progress updates
+async function handleStreamingRequest(request: NextRequest) {
+  const encoder = new TextEncoder();
+
+  // Use TransformStream for better streaming support
+  const { readable, writable } = new TransformStream();
+  const writer = writable.getWriter();
+
+  // Helper to write and flush immediately
+  const writeEvent = async (event: string, data: unknown) => {
+    await writer.write(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+  };
+
+  // Process in background while streaming response
+  (async () => {
+    try {
+      const userId = await requireValidUser();
+
+      const body = await request.json();
+      const { url, lang = 'en' } = body as { url: string; lang?: string };
+
+      if (!url) {
+        await writeEvent('error', { error: 'URL is required' });
+        await writer.close();
+        return;
+      }
+
+      const videoId = extractVideoId(url);
+      if (!videoId) {
+        await writeEvent('error', { error: 'Invalid YouTube URL' });
+        await writer.close();
+        return;
+      }
+
+      // Check for existing script
+      const existingScript = await prisma.script.findFirst({
+        where: { sourceUrl: url, userId },
+      });
+
+      if (existingScript?.repurposedScript) {
+        await writeEvent('complete', {
+          success: true,
+          script: {
+            id: existingScript.id,
+            title: existingScript.title,
+            script: existingScript.script,
+            repurposedScript: existingScript.repurposedScript,
+            hooks: existingScript.hooks,
+            status: existingScript.status,
+            createdAt: existingScript.createdAt.toISOString(),
+            updatedAt: existingScript.updatedAt.toISOString(),
+          },
+          alreadyExists: true,
+        });
+        await writer.close();
+        return;
+      }
+
+      // Send progress: extracting
+      await writeEvent('progress', {
+        step: 'extracting',
+        message: 'Extracting transcript from YouTube',
+      });
+
+      // Get video title and transcript
+      const [videoTitle, transcriptResult] = await Promise.all([
+        getYouTubeTitle(url),
+        getYouTubeTranscript({ userId, videoUrl: url, lang }),
+      ]);
+
+      // Create script record
+      let script;
+      if (existingScript) {
+        script = existingScript;
+      } else {
+        script = await prisma.script.create({
+          data: {
+            userId,
+            title: videoTitle || `YouTube Video ${videoId}`,
+            script: transcriptResult.transcript,
+            sourceUrl: url,
+            status: 'draft',
+          },
+        });
+      }
+
+      // Repurpose with progress callback
+      const repurposeResult = await repurposeTranscript(
+        userId,
+        transcriptResult.transcript,
+        async (update: ProgressUpdate) => {
+          await writeEvent('progress', update);
+        }
+      );
+
+      // Update script with repurposed content
+      const updatedScript = await prisma.script.update({
+        where: { id: script.id },
+        data: {
+          repurposedScript: repurposeResult.repurposedScript,
+          hooks: repurposeResult.hooks,
+          status: 'in_progress',
+        },
+      });
+
+      // Send completion event
+      await writeEvent('complete', {
+        success: true,
+        script: {
+          id: updatedScript.id,
+          title: updatedScript.title,
+          script: updatedScript.script,
+          repurposedScript: updatedScript.repurposedScript,
+          hooks: updatedScript.hooks,
+          status: updatedScript.status,
+          createdAt: updatedScript.createdAt.toISOString(),
+          updatedAt: updatedScript.updatedAt.toISOString(),
+        },
+        chunksProcessed: repurposeResult.chunksProcessed,
+        alreadyExists: false,
+      });
+
+      await writer.close();
+    } catch (error) {
+      let errorMessage = 'Failed to repurpose';
+
+      if (error instanceof Error) {
+        if (error.message === 'Unauthorized' || error.message === 'InvalidSession') {
+          errorMessage = error.message;
+        } else if (error.message.includes('No LLM model selected')) {
+          errorMessage = error.message;
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      if (isApiError(error)) {
+        errorMessage = error.message;
+      }
+
+      console.error('Error repurposing URL:', error);
+      await writeEvent('error', { error: errorMessage });
+      await writer.close();
+    }
+  })();
+
+  return new Response(readable, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    },
+  });
+}
+
+// Non-streaming version for backwards compatibility
+async function handleNonStreamingRequest(request: NextRequest) {
   try {
     const userId = await requireValidUser();
 
