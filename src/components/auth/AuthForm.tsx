@@ -89,7 +89,7 @@ export function AuthForm({ mode }: AuthFormProps) {
               placeholder="Your name"
               disabled={isLoading}
               className={cn(
-                'w-full rounded-xl border border-white/10 bg-white/[0.03] py-3 pl-10 pr-4',
+                'w-full rounded-xl border border-white/10 bg-[#1a1a1a] py-3 pl-10 pr-4',
                 'text-white placeholder:text-white/30',
                 'focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/10',
                 'transition-colors duration-200',
@@ -154,9 +154,9 @@ export function AuthForm({ mode }: AuthFormProps) {
         type="submit"
         disabled={isLoading}
         className={cn(
-          'w-full rounded-xl border border-white/20 bg-white/10 py-3 px-4',
+          'w-full rounded-xl border border-white/20 bg-[#2a2a2a] py-3 px-4',
           'text-sm font-medium text-white',
-          'hover:bg-white/20 hover:border-white/30',
+          'hover:bg-[#3a3a3a] hover:border-white/30',
           'focus:outline-none focus:ring-2 focus:ring-white/20',
           'transition-all duration-200',
           'disabled:opacity-50 disabled:cursor-not-allowed',
