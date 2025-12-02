@@ -25,3 +25,10 @@ export {
   type InstagramReel,
   type InstagramUserReelsOptions,
 } from './instagram';
+
+// YouTube Transcript
+export {
+  getYouTubeTranscript,
+  type TranscriptOptions,
+  type TranscriptResult,
+} from './youtube-transcript';

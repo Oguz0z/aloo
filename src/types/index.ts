@@ -63,3 +63,37 @@ export interface SavedSearchWithResults {
   createdAt: string;
   results: YouTubeTableData[];
 }
+
+export interface RepurposeVideo {
+  id: string;
+  externalId: string;
+  platform: Platform;
+  title: string;
+  description?: string | null;
+  thumbnail?: string | null;
+  url: string;
+  creatorId?: string | null;
+  creatorName?: string | null;
+  viewCount?: number | null;
+  likeCount?: number | null;
+  commentCount?: number | null;
+  savedAt: string;
+  hasTranscript?: boolean;
+}
+
+export type ScriptStatus = 'draft' | 'in_progress' | 'completed';
+
+export interface Script {
+  id: string;
+  title: string;
+  caption?: string | null;
+  script: string;
+  repurposedScript?: string | null;
+  hooks?: string[] | null;
+  notes?: string | null;
+  status: ScriptStatus;
+  sourceUrl?: string | null;
+  repurposeVideoId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

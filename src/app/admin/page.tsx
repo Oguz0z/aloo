@@ -104,9 +104,7 @@ export default function AdminPage() {
 
         {/* Admin Secret Input */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
-          <label className="block text-xs font-medium text-white/60 mb-2">
-            Admin Secret
-          </label>
+          <label className="block text-xs font-medium text-white/60 mb-2">Admin Secret</label>
           <input
             type="password"
             value={adminSecret}
@@ -217,9 +215,7 @@ export default function AdminPage() {
                     >
                       <div>
                         <p className="text-white">{user.email}</p>
-                        {user.name && (
-                          <p className="text-xs text-white/40">{user.name}</p>
-                        )}
+                        {user.name && <p className="text-xs text-white/40">{user.name}</p>}
                       </div>
                       <span
                         className={cn(

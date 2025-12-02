@@ -1,2 +1,2 @@
 export { DataTable } from './DataTable';
-export { youtubeColumns } from './columns';
+export { youtubeColumns, repurposeColumns, scriptsColumns } from './columns';

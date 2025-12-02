@@ -40,8 +40,7 @@ export async function GET(request: NextRequest) {
     const videoIds = videos.map((v) => v.id).filter(Boolean);
 
     // Fetch video details with stats
-    const videoDetails =
-      videoIds.length > 0 ? await getMultipleVideoDetails(userId, videoIds) : [];
+    const videoDetails = videoIds.length > 0 ? await getMultipleVideoDetails(userId, videoIds) : [];
 
     return NextResponse.json({
       channel,

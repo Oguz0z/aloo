@@ -8,10 +8,7 @@ export async function GET(request: NextRequest) {
   const username = searchParams.get('username');
 
   if (!username) {
-    return NextResponse.json(
-      { error: 'Query parameter "username" is required' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'Query parameter "username" is required' }, { status: 400 });
   }
 
   try {
@@ -24,15 +21,10 @@ export async function GET(request: NextRequest) {
     });
 
     // Find exact username match or closest match
-    const user = users.find(
-      (u) => u.username.toLowerCase() === username.toLowerCase()
-    ) || users[0];
+    const user = users.find((u) => u.username.toLowerCase() === username.toLowerCase()) || users[0];
 
     if (!user) {
-      return NextResponse.json(
-        { error: `User @${username} not found` },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: `User @${username} not found` }, { status: 404 });
     }
 
     // Fetch user's reels

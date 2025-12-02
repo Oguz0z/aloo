@@ -204,7 +204,9 @@ export function YouTubeConfigModal({ isOpen, onClose }: YouTubeConfigModalProps)
             {/* Dropdowns grid - responsive */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-x-4 sm:gap-y-4">
               <div>
-                <label className="mb-1.5 sm:mb-2 block text-xs sm:text-sm font-medium text-white/70">Date Range</label>
+                <label className="mb-1.5 sm:mb-2 block text-xs sm:text-sm font-medium text-white/70">
+                  Date Range
+                </label>
                 <select
                   value={config.dateRange}
                   onChange={(e) => updateConfig('dateRange', e.target.value)}
@@ -219,7 +221,9 @@ export function YouTubeConfigModal({ isOpen, onClose }: YouTubeConfigModalProps)
               </div>
 
               <div>
-                <label className="mb-1.5 sm:mb-2 block text-xs sm:text-sm font-medium text-white/70">Duration</label>
+                <label className="mb-1.5 sm:mb-2 block text-xs sm:text-sm font-medium text-white/70">
+                  Duration
+                </label>
                 <select
                   value={config.videoDuration}
                   onChange={(e) => updateConfig('videoDuration', e.target.value)}
@@ -234,7 +238,9 @@ export function YouTubeConfigModal({ isOpen, onClose }: YouTubeConfigModalProps)
               </div>
 
               <div>
-                <label className="mb-1.5 sm:mb-2 block text-xs sm:text-sm font-medium text-white/70">Sort By</label>
+                <label className="mb-1.5 sm:mb-2 block text-xs sm:text-sm font-medium text-white/70">
+                  Sort By
+                </label>
                 <select
                   value={config.order}
                   onChange={(e) => updateConfig('order', e.target.value)}
@@ -249,7 +255,9 @@ export function YouTubeConfigModal({ isOpen, onClose }: YouTubeConfigModalProps)
               </div>
 
               <div>
-                <label className="mb-1.5 sm:mb-2 block text-xs sm:text-sm font-medium text-white/70">Region</label>
+                <label className="mb-1.5 sm:mb-2 block text-xs sm:text-sm font-medium text-white/70">
+                  Region
+                </label>
                 <select
                   value={config.region}
                   onChange={(e) => updateConfig('region', e.target.value)}

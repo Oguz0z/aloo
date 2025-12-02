@@ -29,9 +29,7 @@ export function transformSearchResultsToTableData(
 /**
  * Transform TikTok user posts to table data format
  */
-export function transformUserPostsToTableData(
-  posts: TikTokUserPost[]
-): TikTokTableData[] {
+export function transformUserPostsToTableData(posts: TikTokUserPost[]): TikTokTableData[] {
   return posts.map((post) => ({
     id: post.id,
     username: post.author.username,
@@ -39,11 +37,7 @@ export function transformUserPostsToTableData(
     views: post.stats.plays,
     likes: post.stats.likes,
     comments: post.stats.comments,
-    engagementScore: calculateEngagement(
-      post.stats.plays,
-      post.stats.likes,
-      post.stats.comments
-    ),
+    engagementScore: calculateEngagement(post.stats.plays, post.stats.likes, post.stats.comments),
     url: post.videoUrl,
     thumbnail: post.thumbnail,
   }));

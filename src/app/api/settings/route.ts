@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 import { encrypt, decrypt, maskApiKey } from '@/lib/crypto';
 import { requireUserId, requireValidUser } from '@/lib/auth-utils';
 
-export type ApiKeyService = 'youtube' | 'rapidapi';
+export type ApiKeyService = 'youtube' | 'rapidapi' | 'openrouter';
 
 interface ApiKeyResponse {
   service: ApiKeyService;
@@ -20,7 +20,7 @@ export async function GET() {
       where: { userId },
     });
 
-    const services: ApiKeyService[] = ['youtube', 'rapidapi'];
+    const services: ApiKeyService[] = ['youtube', 'rapidapi', 'openrouter'];
     const response: ApiKeyResponse[] = services.map((service) => {
       const found = apiKeys.find((k: (typeof apiKeys)[number]) => k.service === service);
       if (found) {
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Service and key are required' }, { status: 400 });
     }
 
-    const validServices: ApiKeyService[] = ['youtube', 'rapidapi'];
+    const validServices: ApiKeyService[] = ['youtube', 'rapidapi', 'openrouter'];
     if (!validServices.includes(service)) {
       return NextResponse.json({ error: 'Invalid service' }, { status: 400 });
     }
@@ -109,7 +109,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Service is required' }, { status: 400 });
     }
 
-    const validServices: ApiKeyService[] = ['youtube', 'rapidapi'];
+    const validServices: ApiKeyService[] = ['youtube', 'rapidapi', 'openrouter'];
     if (!validServices.includes(service as ApiKeyService)) {
       return NextResponse.json({ error: 'Invalid service' }, { status: 400 });
     }

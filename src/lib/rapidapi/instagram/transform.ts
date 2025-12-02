@@ -5,9 +5,7 @@ import { calculateEngagement } from '@/lib/utils';
 /**
  * Transform Instagram reels to table data format
  */
-export function transformReelsToTableData(
-  reels: InstagramReel[]
-): InstagramTableData[] {
+export function transformReelsToTableData(reels: InstagramReel[]): InstagramTableData[] {
   return reels.map((reel) => ({
     id: reel.id,
     username: reel.username,
@@ -15,11 +13,7 @@ export function transformReelsToTableData(
     views: reel.playCount,
     likes: reel.likeCount,
     comments: reel.commentCount,
-    engagementScore: calculateEngagement(
-      reel.playCount,
-      reel.likeCount,
-      reel.commentCount
-    ),
+    engagementScore: calculateEngagement(reel.playCount, reel.likeCount, reel.commentCount),
     url: reel.videoUrl,
     thumbnail: reel.thumbnail,
   }));

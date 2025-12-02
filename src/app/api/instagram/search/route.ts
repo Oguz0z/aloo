@@ -8,10 +8,7 @@ export async function GET(request: NextRequest) {
   const query = searchParams.get('q');
 
   if (!query) {
-    return NextResponse.json(
-      { error: 'Query parameter "q" is required' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'Query parameter "q" is required' }, { status: 400 });
   }
 
   try {

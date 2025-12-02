@@ -7,10 +7,7 @@ export async function GET(request: NextRequest) {
   const secUid = searchParams.get('secUid');
 
   if (!secUid) {
-    return NextResponse.json(
-      { error: 'Query parameter "secUid" is required' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'Query parameter "secUid" is required' }, { status: 400 });
   }
 
   try {

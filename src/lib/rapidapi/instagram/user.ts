@@ -85,8 +85,7 @@ export async function getUserReels({
 
   return items.map((item) => {
     const media = item.media;
-    const thumbnail =
-      media.image_versions2?.candidates?.[0]?.url || '';
+    const thumbnail = media.image_versions2?.candidates?.[0]?.url || '';
 
     return {
       id: media.pk || media.id,

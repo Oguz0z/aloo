@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Bookmark, BookmarkCheck, Loader2, Settings } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Bookmark, BookmarkCheck, Loader2, Settings, RefreshCw, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   SearchInput,
@@ -11,11 +11,30 @@ import {
 } from '@/components/search';
 import { WelcomeHeader } from '@/components/search/WelcomeHeader';
 import { PreLoader } from '@/components/preloader';
-import { DataTable, youtubeColumns } from '@/components/data-table';
+import { ProcessingLoader } from '@/components/processing-loader';
+import {
+  DataTable,
+  youtubeColumns,
+  repurposeColumns,
+  scriptsColumns,
+} from '@/components/data-table';
 import { SettingsModal } from '@/components/settings';
 import { UserMenu } from '@/components/auth';
-import { searchYouTubeWithDetails, searchTikTokWithDetails, searchInstagramWithDetails } from '@/lib/api';
-import type { Platform, YouTubeTableData, TikTokTableData, SavedSearchWithResults } from '@/types';
+import {
+  searchYouTubeWithDetails,
+  searchTikTokWithDetails,
+  searchInstagramWithDetails,
+} from '@/lib/api';
+import type {
+  Platform,
+  YouTubeTableData,
+  TikTokTableData,
+  SavedSearchWithResults,
+  RepurposeVideo,
+  Script,
+} from '@/types';
+
+type ViewMode = 'search' | 'results' | 'repurpose' | 'scripts';
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -29,6 +48,22 @@ export default function Home() {
   const [viewingSavedSearch, setViewingSavedSearch] = useState<SavedSearchWithResults | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [hasYouTubeKey, setHasYouTubeKey] = useState<boolean | null>(null);
+
+  // Repurpose & Scripts state
+  const [viewMode, setViewMode] = useState<ViewMode>('search');
+  const [repurposeVideos, setRepurposeVideos] = useState<RepurposeVideo[]>([]);
+  const [scripts, setScripts] = useState<Script[]>([]);
+  const [isLoadingRepurpose, setIsLoadingRepurpose] = useState(false);
+  const [isLoadingScripts, setIsLoadingScripts] = useState(false);
+  const [selectedScript, setSelectedScript] = useState<Script | null>(null);
+  const [viewingRepurposed, setViewingRepurposed] = useState(false);
+  const [currentHookIndex, setCurrentHookIndex] = useState(0);
+  const [isRegeneratingHooks, setIsRegeneratingHooks] = useState(false);
+
+  // Processing loader state
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState('');
+  const [processingSubtitle, setProcessingSubtitle] = useState<string | undefined>();
 
   // Check if YouTube API key is configured
   useEffect(() => {
@@ -140,7 +175,502 @@ export default function Home() {
     setSearchQuery('');
     setIsSaved(false);
     setViewingSavedSearch(null);
+    setViewMode('search');
+    setSelectedScript(null);
   };
+
+  // Fetch repurpose videos
+  const fetchRepurposeVideos = useCallback(async () => {
+    setIsLoadingRepurpose(true);
+    try {
+      const response = await fetch('/api/repurpose');
+      if (response.ok) {
+        const data = await response.json();
+        setRepurposeVideos(data.videos || []);
+      } else {
+        toast.error('Failed to load repurpose list');
+      }
+    } catch {
+      toast.error('Failed to load repurpose list');
+    } finally {
+      setIsLoadingRepurpose(false);
+    }
+  }, []);
+
+  // Fetch scripts
+  const fetchScripts = useCallback(async () => {
+    setIsLoadingScripts(true);
+    try {
+      const response = await fetch('/api/scripts');
+      if (response.ok) {
+        const data = await response.json();
+        setScripts(data.scripts || []);
+      } else {
+        toast.error('Failed to load scripts');
+      }
+    } catch {
+      toast.error('Failed to load scripts');
+    } finally {
+      setIsLoadingScripts(false);
+    }
+  }, []);
+
+  // Handle repurpose tab click
+  const handleRepurposeTabClick = useCallback(() => {
+    setViewMode('repurpose');
+    setHasSearched(false);
+    fetchRepurposeVideos();
+  }, [fetchRepurposeVideos]);
+
+  // Handle scripts tab click
+  const handleScriptsTabClick = useCallback(() => {
+    setViewMode('scripts');
+    setHasSearched(false);
+    setSelectedScript(null);
+    fetchScripts();
+  }, [fetchScripts]);
+
+  // Handle delete repurpose video
+  const handleDeleteRepurpose = useCallback(async (id: string) => {
+    try {
+      const response = await fetch(`/api/repurpose?id=${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        setRepurposeVideos((prev) => prev.filter((v) => v.id !== id));
+        toast.success('Video removed');
+      } else {
+        toast.error('Failed to delete');
+      }
+    } catch {
+      toast.error('Failed to delete');
+    }
+  }, []);
+
+  // Handle delete script
+  const handleDeleteScript = useCallback(async (id: string) => {
+    try {
+      const response = await fetch(`/api/scripts?id=${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        setScripts((prev) => prev.filter((s) => s.id !== id));
+        toast.success('Script deleted');
+      } else {
+        toast.error('Failed to delete');
+      }
+    } catch {
+      toast.error('Failed to delete');
+    }
+  }, []);
+
+  // Handle transcript extracted
+  const handleTranscriptExtracted = useCallback(() => {
+    // Refresh scripts list
+    fetchScripts();
+  }, [fetchScripts]);
+
+  // Handle view original script
+  const handleViewOriginalScript = useCallback((script: Script) => {
+    setSelectedScript(script);
+    setViewingRepurposed(false);
+  }, []);
+
+  // Handle view repurposed script
+  const handleViewRepurposedScript = useCallback((script: Script) => {
+    setSelectedScript(script);
+    setViewingRepurposed(true);
+    setCurrentHookIndex(0); // Reset hook index when viewing new script
+  }, []);
+
+  // Handle script repurposed - refetch scripts list
+  const handleScriptRepurposed = useCallback(async () => {
+    try {
+      const response = await fetch('/api/scripts');
+      if (response.ok) {
+        const data = await response.json();
+        setScripts(data.scripts);
+      }
+    } catch (error) {
+      console.error('Failed to refresh scripts:', error);
+    }
+  }, []);
+
+  // Handle regenerate hooks
+  const handleRegenerateHooks = useCallback(async () => {
+    if (!selectedScript || isRegeneratingHooks) return;
+
+    setIsRegeneratingHooks(true);
+    try {
+      const response = await fetch(`/api/scripts/${selectedScript.id}/regenerate-hooks`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.hooks) {
+        // Update the selected script with new hooks
+        setSelectedScript((prev) => (prev ? { ...prev, hooks: data.hooks } : null));
+        // Also update in the scripts list
+        setScripts((prev) =>
+          prev.map((s) => (s.id === selectedScript.id ? { ...s, hooks: data.hooks } : s))
+        );
+        setCurrentHookIndex(0);
+        toast.success('Hooks regenerated');
+      } else {
+        toast.error(data.error || 'Failed to regenerate hooks');
+      }
+    } catch {
+      toast.error('Failed to regenerate hooks');
+    } finally {
+      setIsRegeneratingHooks(false);
+    }
+  }, [selectedScript, isRegeneratingHooks]);
+
+  // Handle start repurpose - called from column button, shows full-screen loader
+  const handleStartRepurpose = useCallback(async (script: Script): Promise<boolean> => {
+    const wordCount = script.script.trim().split(/\s+/).filter(Boolean).length;
+    const estimatedChunks = Math.ceil(wordCount / 4000); // Rough estimate based on chunk size
+
+    setIsProcessing(true);
+    setProcessingStatus('Repurposing transcript');
+    setProcessingSubtitle(
+      `${wordCount.toLocaleString()} words • ~${estimatedChunks} chunk${estimatedChunks > 1 ? 's' : ''}`
+    );
+
+    try {
+      const response = await fetch(`/api/scripts/${script.id}/repurpose`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success(
+          `Repurposed successfully (${data.chunksProcessed} chunk${data.chunksProcessed > 1 ? 's' : ''})`
+        );
+        // Refresh scripts list
+        const refreshResponse = await fetch('/api/scripts');
+        if (refreshResponse.ok) {
+          const refreshData = await refreshResponse.json();
+          setScripts(refreshData.scripts);
+        }
+        return true;
+      } else {
+        toast.error(data.error || 'Failed to repurpose');
+        return false;
+      }
+    } catch {
+      toast.error('Failed to repurpose');
+      return false;
+    } finally {
+      setIsProcessing(false);
+      setProcessingStatus('');
+      setProcessingSubtitle(undefined);
+    }
+  }, []);
+
+  // Handle URL repurpose - from search input
+  const handleUrlRepurpose = useCallback(
+    async (url: string) => {
+      setIsProcessing(true);
+      setProcessingStatus('Extracting transcript');
+      setProcessingSubtitle('This may take a moment...');
+
+      try {
+        // Update status after a brief delay
+        setTimeout(() => {
+          if (isProcessing) {
+            setProcessingStatus('Repurposing transcript');
+            setProcessingSubtitle('Processing with AI...');
+          }
+        }, 3000);
+
+        const response = await fetch('/api/repurpose-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          toast.success(
+            data.alreadyExists
+              ? 'Script already exists'
+              : `Repurposed successfully (${data.chunksProcessed} chunks)`
+          );
+          // Refresh scripts and navigate to scripts view
+          const scriptsResponse = await fetch('/api/scripts');
+          if (scriptsResponse.ok) {
+            const scriptsData = await scriptsResponse.json();
+            setScripts(scriptsData.scripts);
+          }
+          setSearchQuery('');
+          setViewMode('scripts');
+        } else {
+          toast.error(data.error || 'Failed to repurpose');
+        }
+      } catch {
+        toast.error('Failed to repurpose');
+      } finally {
+        setIsProcessing(false);
+        setProcessingStatus('');
+        setProcessingSubtitle(undefined);
+      }
+    },
+    [isProcessing]
+  );
+
+  // Memoized columns
+  const memoizedRepurposeColumns = useMemo(
+    () => repurposeColumns(handleTranscriptExtracted, handleDeleteRepurpose, handleScriptsTabClick),
+    [handleTranscriptExtracted, handleDeleteRepurpose, handleScriptsTabClick]
+  );
+
+  const memoizedScriptsColumns = useMemo(
+    () =>
+      scriptsColumns(
+        handleViewOriginalScript,
+        handleViewRepurposedScript,
+        handleDeleteScript,
+        handleScriptRepurposed,
+        handleStartRepurpose
+      ),
+    [
+      handleViewOriginalScript,
+      handleViewRepurposedScript,
+      handleDeleteScript,
+      handleScriptRepurposed,
+      handleStartRepurpose,
+    ]
+  );
+
+  // Show repurpose view
+  if (viewMode === 'repurpose') {
+    return (
+      <>
+        {isProcessing && (
+          <ProcessingLoader status={processingStatus} subtitle={processingSubtitle} />
+        )}
+        <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-4 sm:mb-8">
+              <button
+                onClick={handleBackToSearch}
+                className="mb-3 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/70 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white active:scale-95"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back
+              </button>
+              <h1 className="text-lg sm:text-2xl font-semibold text-white">Repurpose List</h1>
+              <p className="text-xs sm:text-sm text-white/60 mt-1">
+                {isLoadingRepurpose ? 'Loading...' : `${repurposeVideos.length} videos saved`}
+              </p>
+            </div>
+            <DataTable
+              columns={memoizedRepurposeColumns}
+              data={repurposeVideos}
+              isLoading={isLoadingRepurpose}
+              skeletonRows={5}
+            />
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Show scripts view
+  if (viewMode === 'scripts') {
+    // If viewing a specific script
+    if (selectedScript) {
+      const displayContent = viewingRepurposed
+        ? selectedScript.repurposedScript || selectedScript.script
+        : selectedScript.script;
+      const displayTitle = selectedScript.title;
+
+      // Get hooks array
+      const hooks =
+        viewingRepurposed && selectedScript.hooks && Array.isArray(selectedScript.hooks)
+          ? (selectedScript.hooks as string[])
+          : [];
+
+      // Split content into paragraphs
+      const paragraphs = displayContent
+        .split(/\n\n+/)
+        .flatMap((block) => {
+          if (block.length > 500 && !block.includes('\n')) {
+            const sentences = block.match(/[^.!?]+[.!?]+/g) || [block];
+            const chunks: string[] = [];
+            let current = '';
+            sentences.forEach((s) => {
+              if ((current + s).length > 400) {
+                if (current) chunks.push(current.trim());
+                current = s;
+              } else {
+                current += s;
+              }
+            });
+            if (current) chunks.push(current.trim());
+            return chunks;
+          }
+          return [block];
+        })
+        .filter((p) => p.trim());
+
+      // Calculate estimated time per paragraph (avg 150 words per minute reading speed)
+      const wordsPerParagraph = paragraphs.map((p) => p.trim().split(/\s+/).filter(Boolean).length);
+      const cumulativeTime = wordsPerParagraph.reduce((acc: number[], words, i) => {
+        const prevTime = i === 0 ? 0 : acc[i - 1];
+        const timeForParagraph = (words / 150) * 60; // seconds
+        acc.push(prevTime + timeForParagraph);
+        return acc;
+      }, [] as number[]);
+
+      const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+      };
+
+      return (
+        <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
+          <div className="mx-auto max-w-4xl">
+            <div className="mb-4 sm:mb-8">
+              <button
+                onClick={() => setSelectedScript(null)}
+                className="mb-3 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/70 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white active:scale-95"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back
+              </button>
+              <h1 className="text-base sm:text-lg font-semibold text-white">{displayTitle}</h1>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-xs text-white/60">
+                  {new Date(selectedScript.createdAt).toLocaleDateString()}
+                </span>
+                <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-xs text-white/60">
+                  {displayContent.trim().split(/\s+/).filter(Boolean).length.toLocaleString()} words
+                </span>
+                <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-xs text-white/60 font-mono tabular-nums">
+                  ~{formatTime(cumulativeTime[cumulativeTime.length - 1] || 0)} read
+                </span>
+                {viewingRepurposed && (
+                  <span className="inline-flex items-center rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs text-emerald-400">
+                    Repurposed
+                  </span>
+                )}
+                {hooks.length > 0 && (
+                  <span className="inline-flex items-center rounded-full bg-purple-500/20 px-2.5 py-0.5 text-xs text-purple-400">
+                    {hooks.length} hooks
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 sm:p-6 max-h-[70vh] overflow-y-auto">
+              <div className="space-y-4">
+                {paragraphs.map((paragraph, i) => {
+                  const isFirstParagraph = i === 0;
+                  const hasHooks = hooks.length > 0 && isFirstParagraph && viewingRepurposed;
+                  const displayText = hasHooks ? hooks[currentHookIndex] : paragraph.trim();
+                  const startTime = i === 0 ? 0 : cumulativeTime[i - 1];
+
+                  return (
+                    <div
+                      key={i}
+                      className="flex gap-3 group -mx-3 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors cursor-default"
+                    >
+                      {/* Timestamp */}
+                      <div className="flex-shrink-0 pt-0.5">
+                        <span className="font-mono text-[10px] tabular-nums text-white/30 group-hover:text-white/70 transition-colors">
+                          {formatTime(startTime)}
+                        </span>
+                      </div>
+                      {/* Content */}
+                      <div className="flex-1">
+                        {hasHooks ? (
+                          <div>
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <button
+                                onClick={() =>
+                                  setCurrentHookIndex((prev) => (prev + 1) % hooks.length)
+                                }
+                                className="inline-flex items-center gap-1.5 text-[10px] text-purple-400 font-medium"
+                              >
+                                <span className="px-1.5 py-0.5 rounded bg-purple-500/20">
+                                  Hook {currentHookIndex + 1}/{hooks.length}
+                                </span>
+                                <span className="text-purple-400/50">click to alternate</span>
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRegenerateHooks();
+                                }}
+                                disabled={isRegeneratingHooks}
+                                className="inline-flex items-center gap-1 text-[10px] text-white/40 hover:text-white/70 transition-colors disabled:opacity-50"
+                                title="Regenerate hooks"
+                              >
+                                <RefreshCw
+                                  className={`h-3 w-3 ${isRegeneratingHooks ? 'animate-spin' : ''}`}
+                                />
+                                <span>{isRegeneratingHooks ? 'Regenerating...' : 'Retry'}</span>
+                              </button>
+                            </div>
+                            <button
+                              onClick={() =>
+                                setCurrentHookIndex((prev) => (prev + 1) % hooks.length)
+                              }
+                              className="text-left w-full"
+                            >
+                              <p className="text-sm sm:text-base text-white/80 group-hover:text-white leading-7 transition-colors">
+                                {displayText}
+                              </p>
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-sm sm:text-base text-white/80 group-hover:text-white leading-7 transition-colors">
+                            {displayText}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        {isProcessing && (
+          <ProcessingLoader status={processingStatus} subtitle={processingSubtitle} />
+        )}
+        <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-4 sm:mb-8">
+              <button
+                onClick={handleBackToSearch}
+                className="mb-3 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/70 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white active:scale-95"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back
+              </button>
+              <h1 className="text-lg sm:text-2xl font-semibold text-white">Scripts</h1>
+              <p className="text-xs sm:text-sm text-white/60 mt-1">
+                {isLoadingScripts ? 'Loading...' : `${scripts.length} scripts`}
+              </p>
+            </div>
+            <DataTable
+              columns={memoizedScriptsColumns}
+              data={scripts}
+              isLoading={isLoadingScripts}
+              skeletonRows={5}
+            />
+          </div>
+        </div>
+      </>
+    );
+  }
 
   // Show results view if we have searched
   if (hasSearched) {
@@ -153,9 +683,10 @@ export default function Home() {
               <div>
                 <button
                   onClick={handleBackToSearch}
-                  className="mb-2 text-xs sm:text-sm text-white/60 hover:text-white transition-colors min-h-[44px] flex items-center"
+                  className="mb-3 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/70 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white active:scale-95"
                 >
-                  &larr; Back to search
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Back
                 </button>
                 <h1 className="text-lg sm:text-2xl font-semibold text-white">
                   {viewingSavedSearch ? (
@@ -208,6 +739,7 @@ export default function Home() {
   return (
     <>
       {showPreLoader && <PreLoader onComplete={() => setShowPreLoader(false)} />}
+      {isProcessing && <ProcessingLoader status={processingStatus} subtitle={processingSubtitle} />}
       <div className="relative flex min-h-screen flex-col items-center justify-center px-3 sm:px-4">
         {/* Top Right Controls */}
         <div className="fixed right-3 top-3 sm:right-6 sm:top-6 z-40 flex items-center gap-3 sm:gap-6">
@@ -235,8 +767,9 @@ export default function Home() {
               value={searchQuery}
               onChange={setSearchQuery}
               onSearch={handleSearch}
+              onUrlRepurpose={handleUrlRepurpose}
               placeholder="Search for videos, creators, or topics..."
-              isLoading={isSearching}
+              isLoading={isSearching || isProcessing}
               platform={selectedPlatform}
             />
           </div>
@@ -247,6 +780,8 @@ export default function Home() {
           <PreviousSearches
             onSearchSelect={handleSearchSelect}
             onSavedSearchSelect={handleSavedSearchSelect}
+            onRepurposeTabClick={handleRepurposeTabClick}
+            onScriptsTabClick={handleScriptsTabClick}
           />
         </div>
       </div>

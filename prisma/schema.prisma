@@ -19,11 +19,14 @@ model User {
   updatedAt   DateTime @updatedAt
 
   // User's data
-  searches      Search[]
-  savedSearches SavedSearch[]
-  savedItems    SavedItem[]
-  apiKeys       ApiKey[]
-  youtubeConfig YouTubeConfig?
+  searches        Search[]
+  savedSearches   SavedSearch[]
+  savedItems      SavedItem[]
+  apiKeys         ApiKey[]
+  youtubeConfig   YouTubeConfig?
+  repurposeVideos RepurposeVideo[]
+  scripts         Script[]
+  settings        UserSettings?
 
   @@index([email])
   @@index([inviteToken])
@@ -175,4 +178,82 @@ model YouTubeConfig {
   order        String   @default("relevance") // date, rating, relevance, title, viewCount
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+// Repurpose videos - videos saved for repurposing
+model RepurposeVideo {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  externalId   String   // YouTube video ID, TikTok video ID, etc.
+  platform     Platform
+  title        String
+  description  String?  @db.Text
+  thumbnail    String?
+  url          String
+  creatorId    String?
+  creatorName  String?
+  viewCount    BigInt?
+  likeCount    BigInt?
+  commentCount BigInt?
+  publishedAt  DateTime?
+  savedAt      DateTime @default(now())
+
+  // Related scripts (transcripts extracted from this video)
+  scripts      Script[]
+
+  @@unique([userId, externalId, platform])
+  @@index([userId])
+  @@index([platform])
+  @@index([savedAt])
+}
+
+// LLM Models - synced from OpenRouter
+model LlmModel {
+  id              String   @id @default(cuid())
+  modelId         String   @unique // OpenRouter model ID e.g. "openai/gpt-4"
+  name            String   // Display name
+  provider        String   // Provider name e.g. "OpenAI"
+  promptPrice     Float    // Price per 1M tokens (prompt)
+  completionPrice Float    // Price per 1M tokens (completion)
+  contextLength   Int?     // Max context length
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([provider])
+  @@index([modelId])
+}
+
+// User Settings - stores user preferences
+model UserSettings {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  selectedModelId String?  // Selected LLM model ID from OpenRouter
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// Scripts - user-created scripts for content
+model Script {
+  id                String          @id @default(cuid())
+  userId            String
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title             String
+  caption           String?         @db.Text
+  script            String          @db.Text // Original transcript
+  repurposedScript  String?         @db.Text // AI-rewritten version
+  hooks             Json?           // Array of 3 generated hooks
+  notes             String?         @db.Text
+  status            String          @default("draft") // draft, in_progress, completed
+  sourceUrl         String?         // Original video URL if extracted from a video
+  repurposeVideoId  String?         // Link to the repurpose video if applicable
+  repurposeVideo    RepurposeVideo? @relation(fields: [repurposeVideoId], references: [id], onDelete: SetNull)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([repurposeVideoId])
 }

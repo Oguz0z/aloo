@@ -35,9 +35,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark bg-black">
       <body className={`${inter.variable} ${doto.variable} antialiased bg-black min-h-screen`}>
-        <SessionProvider>
-          {children}
-        </SessionProvider>
+        <SessionProvider>{children}</SessionProvider>
         <Toaster
           position="bottom-right"
           toastOptions={{

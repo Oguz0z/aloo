@@ -105,11 +105,10 @@ function SetPasswordForm() {
       <div className="text-center">
         <XCircle className="mx-auto h-12 w-12 text-red-400 mb-4" />
         <h2 className="text-xl font-medium text-white mb-2">Invalid Invite</h2>
-        <p className="text-white/50 mb-6">{error || 'This invite link is invalid or has expired.'}</p>
-        <Link
-          href="/login"
-          className="text-white/70 hover:text-white underline"
-        >
+        <p className="text-white/50 mb-6">
+          {error || 'This invite link is invalid or has expired.'}
+        </p>
+        <Link href="/login" className="text-white/70 hover:text-white underline">
           Go to login
         </Link>
       </div>
@@ -156,7 +155,10 @@ function SetPasswordForm() {
           </div>
 
           <div>
-            <label htmlFor="confirmPassword" className="block text-xs font-medium text-white/60 mb-2">
+            <label
+              htmlFor="confirmPassword"
+              className="block text-xs font-medium text-white/60 mb-2"
+            >
               Confirm Password
             </label>
             <div className="relative">

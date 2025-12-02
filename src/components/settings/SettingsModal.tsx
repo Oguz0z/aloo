@@ -1,15 +1,25 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Eye, EyeOff, Check, Loader2, Trash2, Info } from 'lucide-react';
+import { X, Eye, EyeOff, Check, Loader2, Trash2, Info, RefreshCw, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
-type ApiKeyService = 'youtube' | 'rapidapi';
+type ApiKeyService = 'youtube' | 'rapidapi' | 'openrouter';
 
 interface ApiKeyState {
   service: ApiKeyService;
   maskedKey: string | null;
   hasKey: boolean;
+}
+
+interface LlmModel {
+  id: string;
+  modelId: string;
+  name: string;
+  provider: string;
+  promptPrice: number;
+  completionPrice: number;
+  contextLength: number | null;
 }
 
 interface SettingsModalProps {
@@ -26,6 +36,10 @@ const SERVICE_CONFIG: Record<ApiKeyService, { label: string; placeholder: string
     label: 'RapidAPI Key',
     placeholder: 'Enter your RapidAPI key',
   },
+  openrouter: {
+    label: 'OpenRouter API Key',
+    placeholder: 'Enter your OpenRouter API key',
+  },
 };
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
@@ -38,6 +52,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [isDeleting, setIsDeleting] = useState<ApiKeyService | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // LLM Models state
+  const [llmModels, setLlmModels] = useState<LlmModel[]>([]);
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isSavingModel, setIsSavingModel] = useState(false);
+  const [modelSearch, setModelSearch] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const fetchApiKeys = useCallback(async () => {
     try {
@@ -53,17 +77,69 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
   }, []);
 
+  const fetchLlmModels = useCallback(async () => {
+    try {
+      const response = await fetch('/api/llm-models');
+      if (response.ok) {
+        const data = await response.json();
+        setLlmModels(data.models || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch LLM models:', error);
+    }
+  }, []);
+
+  const fetchUserSettings = useCallback(async () => {
+    try {
+      const response = await fetch('/api/user-settings');
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedModelId(data.selectedModelId || null);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user settings:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (isOpen) {
       fetchApiKeys();
+      fetchLlmModels();
+      fetchUserSettings();
       // Trigger entrance animation
       requestAnimationFrame(() => {
         setIsVisible(true);
       });
     } else {
       setIsVisible(false);
+      setIsDropdownOpen(false);
     }
-  }, [isOpen, fetchApiKeys]);
+  }, [isOpen, fetchApiKeys, fetchLlmModels, fetchUserSettings]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+        setModelSearch('');
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      // Focus search input when dropdown opens
+      setTimeout(() => searchInputRef.current?.focus(), 0);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isDropdownOpen]);
+
+  // Filter models based on search
+  const filteredModels = llmModels.filter(
+    (model) =>
+      model.name.toLowerCase().includes(modelSearch.toLowerCase()) ||
+      model.provider.toLowerCase().includes(modelSearch.toLowerCase()) ||
+      model.modelId.toLowerCase().includes(modelSearch.toLowerCase())
+  );
 
   const handleSave = async (service: ApiKeyService) => {
     if (!inputValue.trim()) return;
@@ -130,6 +206,61 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setShowKey(false);
   };
 
+  const handleSyncModels = async () => {
+    setIsSyncing(true);
+    try {
+      const response = await fetch('/api/llm-models', {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        await fetchLlmModels();
+        toast.success(`Synced ${data.synced} models`);
+      } else {
+        toast.error('Failed to sync models');
+      }
+    } catch (error) {
+      console.error('Failed to sync models:', error);
+      toast.error('Failed to sync models');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleModelSelect = async (modelId: string) => {
+    setIsSavingModel(true);
+    try {
+      const response = await fetch('/api/user-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selectedModelId: modelId }),
+      });
+
+      if (response.ok) {
+        setSelectedModelId(modelId);
+        setIsDropdownOpen(false);
+        toast.success('Model selected');
+      } else {
+        toast.error('Failed to save model selection');
+      }
+    } catch (error) {
+      console.error('Failed to save model selection:', error);
+      toast.error('Failed to save model selection');
+    } finally {
+      setIsSavingModel(false);
+    }
+  };
+
+  const formatPrice = (price: number): string => {
+    if (price === 0) return 'Free';
+    if (price < 0.01) return `$${price.toFixed(4)}`;
+    if (price < 1) return `$${price.toFixed(2)}`;
+    return `$${price.toFixed(2)}`;
+  };
+
+  const selectedModel = llmModels.find((m) => m.modelId === selectedModelId);
+
   if (!isOpen) return null;
 
   return (
@@ -144,7 +275,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
       {/* Modal */}
       <div
-        className={`relative w-[calc(100%-1.5rem)] sm:w-full max-w-lg mx-3 sm:mx-0 rounded-xl sm:rounded-2xl border border-white/10 bg-black/90 p-4 sm:p-6 shadow-2xl transition-all duration-300 max-h-[90vh] overflow-y-auto ${
+        className={`relative w-[calc(100%-1.5rem)] sm:w-full max-w-4xl mx-3 sm:mx-0 rounded-xl sm:rounded-2xl border border-white/10 bg-black/90 p-4 sm:p-6 shadow-2xl transition-all duration-300 max-h-[90vh] overflow-y-auto ${
           isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
         }`}
       >
@@ -159,11 +290,12 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </button>
         </div>
 
-        {/* API Keys Section */}
-        <div className="space-y-4 sm:space-y-6">
-          <div>
-            <h3 className="mb-3 sm:mb-4 text-[10px] sm:text-[11px] font-medium uppercase tracking-[0.1em] sm:tracking-[0.15em] text-white/50">
-              API Keys
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          {/* Left Column - YouTube & RapidAPI */}
+          <div className="space-y-4">
+            <h3 className="text-[10px] sm:text-[11px] font-medium uppercase tracking-[0.1em] sm:tracking-[0.15em] text-white/50">
+              Platform API Keys
             </h3>
 
             {isLoading ? (
@@ -171,7 +303,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 <Loader2 className="h-5 w-5 animate-spin text-white/40" />
               </div>
             ) : (
-              <div className="space-y-3 sm:space-y-4">
+              <div className="space-y-3">
                 {(['youtube', 'rapidapi'] as ApiKeyService[]).map((service) => {
                   const keyState = apiKeys.find((k) => k.service === service);
                   const config = SERVICE_CONFIG[service];
@@ -183,10 +315,14 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       className="rounded-lg sm:rounded-xl border border-white/10 bg-white/[0.03] p-3 sm:p-4"
                     >
                       <div className="mb-2 flex items-center justify-between gap-2">
-                        <label className="text-xs sm:text-sm font-medium text-white/80">{config.label}</label>
+                        <label className="text-xs sm:text-sm font-medium text-white/80">
+                          {config.label}
+                        </label>
                         {keyState?.hasKey && !isEditing && (
                           <div className="flex items-center gap-1.5 sm:gap-2">
-                            <span className="text-[10px] sm:text-xs text-white/40 truncate max-w-[80px] sm:max-w-none">{keyState.maskedKey}</span>
+                            <span className="text-[10px] sm:text-xs text-white/40 truncate max-w-[80px] sm:max-w-none">
+                              {keyState.maskedKey}
+                            </span>
                             <button
                               onClick={() => handleDelete(service)}
                               disabled={isDeleting === service}
@@ -208,7 +344,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           <Info className="mt-px h-3 w-3 flex-shrink-0 text-white/30" />
                           <div className="text-[10px] sm:text-[11px] leading-relaxed text-white/40">
                             <span>Subscribe to these APIs (free tier works):</span>
-                            <div className="mt-1.5 flex flex-col sm:flex-row gap-1.5 sm:gap-3">
+                            <div className="mt-1.5 flex flex-col gap-1.5">
                               <a
                                 href="https://rapidapi.com/irrors-apis/api/instagram-looter2/"
                                 target="_blank"
@@ -225,17 +361,23 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                               >
                                 TikTok API23
                               </a>
+                              <a
+                                href="https://rapidapi.com/solid-api-solid-api-default/api/youtube-transcript3/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-white/60 transition-colors hover:text-white"
+                              >
+                                YouTube Transcript3
+                              </a>
                             </div>
                           </div>
                         </div>
                       )}
 
-                      {/* Edit form with smooth height animation */}
+                      {/* Edit form */}
                       <div
                         className="grid transition-all duration-200 ease-out"
-                        style={{
-                          gridTemplateRows: isEditing ? '1fr' : '0fr',
-                        }}
+                        style={{ gridTemplateRows: isEditing ? '1fr' : '0fr' }}
                       >
                         <div className="overflow-hidden">
                           <div className="space-y-3 pt-1">
@@ -246,11 +388,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}
                                 onKeyDown={(e) => {
-                                  if (e.key === 'Enter' && inputValue.trim()) {
-                                    handleSave(service);
-                                  } else if (e.key === 'Escape') {
-                                    handleCancelEdit();
-                                  }
+                                  if (e.key === 'Enter' && inputValue.trim()) handleSave(service);
+                                  else if (e.key === 'Escape') handleCancelEdit();
                                 }}
                                 placeholder={config.placeholder}
                                 className="w-full rounded-lg border border-white/20 bg-white/[0.05] px-3 py-2 pr-10 text-sm text-white placeholder:text-white/30 transition-colors focus:border-white/40 focus:outline-none"
@@ -291,12 +430,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         </div>
                       </div>
 
-                      {/* Add/Update button with smooth fade animation */}
+                      {/* Add/Update button */}
                       <div
                         className="grid transition-all duration-200 ease-out"
-                        style={{
-                          gridTemplateRows: !isEditing ? '1fr' : '0fr',
-                        }}
+                        style={{ gridTemplateRows: !isEditing ? '1fr' : '0fr' }}
                       >
                         <div className="overflow-hidden">
                           <button
@@ -312,6 +449,220 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 })}
               </div>
             )}
+          </div>
+
+          {/* Right Column - OpenRouter & LLM Model */}
+          <div className="space-y-4">
+            <h3 className="text-[10px] sm:text-[11px] font-medium uppercase tracking-[0.1em] sm:tracking-[0.15em] text-white/50">
+              AI Model
+            </h3>
+
+            {/* OpenRouter API Key */}
+            {(() => {
+              const service: ApiKeyService = 'openrouter';
+              const keyState = apiKeys.find((k) => k.service === service);
+              const config = SERVICE_CONFIG[service];
+              const isEditing = editingService === service;
+
+              return (
+                <div className="rounded-lg sm:rounded-xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <label className="text-xs sm:text-sm font-medium text-white/80">
+                      {config.label}
+                    </label>
+                    {keyState?.hasKey && !isEditing && (
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <span className="text-[10px] sm:text-xs text-white/40 truncate max-w-[80px] sm:max-w-none">
+                          {keyState.maskedKey}
+                        </span>
+                        <button
+                          onClick={() => handleDelete(service)}
+                          disabled={isDeleting === service}
+                          className="rounded-lg p-1.5 sm:p-1 min-h-[36px] min-w-[36px] sm:min-h-0 sm:min-w-0 flex items-center justify-center text-white/30 transition-colors hover:bg-red-500/20 hover:text-red-400"
+                        >
+                          {isDeleting === service ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Edit form */}
+                  <div
+                    className="grid transition-all duration-200 ease-out"
+                    style={{ gridTemplateRows: isEditing ? '1fr' : '0fr' }}
+                  >
+                    <div className="overflow-hidden">
+                      <div className="space-y-3 pt-1">
+                        <div className="relative">
+                          <input
+                            ref={editingService === service ? inputRef : null}
+                            type={showKey ? 'text' : 'password'}
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && inputValue.trim()) handleSave(service);
+                              else if (e.key === 'Escape') handleCancelEdit();
+                            }}
+                            placeholder={config.placeholder}
+                            className="w-full rounded-lg border border-white/20 bg-white/[0.05] px-3 py-2 pr-10 text-sm text-white placeholder:text-white/30 transition-colors focus:border-white/40 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowKey(!showKey)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 transition-colors hover:text-white/60"
+                          >
+                            {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
+                        <div className="flex justify-end gap-2 pb-1">
+                          <button
+                            onClick={handleCancelEdit}
+                            className="rounded-lg border border-white/20 px-3 py-1.5 min-h-[36px] text-[11px] sm:text-xs font-medium text-white/60 transition-all hover:border-white/30 hover:text-white active:scale-95"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => handleSave(service)}
+                            disabled={!inputValue.trim() || isSaving}
+                            className="flex items-center gap-1.5 rounded-lg border border-white/30 bg-white/10 px-3 py-1.5 min-h-[36px] text-[11px] sm:text-xs font-medium text-white transition-all hover:bg-white/20 disabled:opacity-50 active:scale-95"
+                          >
+                            {isSaving ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Check className="h-3 w-3" />
+                            )}
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Add/Update button */}
+                  <div
+                    className="grid transition-all duration-200 ease-out"
+                    style={{ gridTemplateRows: !isEditing ? '1fr' : '0fr' }}
+                  >
+                    <div className="overflow-hidden">
+                      <button
+                        onClick={() => handleStartEdit(service)}
+                        className="w-full rounded-lg border border-dashed border-white/20 py-2 min-h-[40px] text-[11px] sm:text-xs text-white/40 transition-all hover:border-white/30 hover:text-white/60 active:scale-[0.98]"
+                      >
+                        {keyState?.hasKey ? 'Update key' : 'Add key'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* LLM Model Selection */}
+            <div className="rounded-lg sm:rounded-xl border border-white/10 bg-white/[0.03] p-3 sm:p-4 overflow-visible">
+              <div className="mb-3">
+                <label className="text-xs sm:text-sm font-medium text-white/80">
+                  Selected Model
+                </label>
+              </div>
+
+              {/* Model Dropdown */}
+              <div ref={dropdownRef} className="relative mb-3">
+                <button
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  disabled={llmModels.length === 0 || isSavingModel}
+                  className="flex w-full items-center justify-between rounded-lg border border-white/20 bg-white/[0.05] px-3 py-2.5 min-h-[44px] text-left text-sm text-white transition-colors hover:border-white/30 focus:border-white/40 focus:outline-none disabled:opacity-50"
+                >
+                  <span className="truncate">
+                    {selectedModel ? (
+                      <span className="flex items-center gap-2">
+                        <span className="truncate">{selectedModel.name}</span>
+                        <span className="text-white/40 text-xs">
+                          {formatPrice(selectedModel.promptPrice)}/1M
+                        </span>
+                      </span>
+                    ) : llmModels.length === 0 ? (
+                      <span className="text-white/40">No models - click Sync</span>
+                    ) : (
+                      <span className="text-white/40">Select a model</span>
+                    )}
+                  </span>
+                  {isSavingModel ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-white/40 flex-shrink-0" />
+                  ) : (
+                    <ChevronDown
+                      className={`h-4 w-4 text-white/40 flex-shrink-0 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+                    />
+                  )}
+                </button>
+
+                {/* Dropdown Menu - opens upward to avoid being clipped */}
+                {isDropdownOpen && llmModels.length > 0 && (
+                  <div className="absolute left-0 right-0 bottom-full z-50 mb-1 rounded-lg border border-white/20 bg-black shadow-xl">
+                    {/* Search Input */}
+                    <div className="p-2 border-b border-white/10">
+                      <input
+                        ref={searchInputRef}
+                        type="text"
+                        value={modelSearch}
+                        onChange={(e) => setModelSearch(e.target.value)}
+                        placeholder="Search models..."
+                        className="w-full rounded-md border border-white/20 bg-white/[0.05] px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-white/40 focus:outline-none"
+                      />
+                    </div>
+                    {/* Model List */}
+                    <div className="max-h-48 overflow-y-auto">
+                      {filteredModels.length === 0 ? (
+                        <div className="px-3 py-4 text-center text-sm text-white/40">
+                          No models found
+                        </div>
+                      ) : (
+                        filteredModels.map((model) => (
+                          <button
+                            key={model.id}
+                            onClick={() => {
+                              handleModelSelect(model.modelId);
+                              setModelSearch('');
+                            }}
+                            className={`flex w-full items-center justify-between px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/10 ${
+                              model.modelId === selectedModelId
+                                ? 'bg-white/5 text-white'
+                                : 'text-white/80'
+                            }`}
+                          >
+                            <span className="truncate pr-2">{model.name}</span>
+                            <span className="text-white/40 text-xs flex-shrink-0">
+                              {formatPrice(model.promptPrice)}/1M
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Sync Button */}
+              <button
+                onClick={handleSyncModels}
+                disabled={isSyncing}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-white/20 py-2 min-h-[40px] text-[11px] sm:text-xs text-white/40 transition-all hover:border-white/30 hover:text-white/60 active:scale-[0.98] disabled:opacity-50"
+              >
+                {isSyncing ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Syncing...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Sync models
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 

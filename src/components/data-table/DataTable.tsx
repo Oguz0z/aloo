@@ -25,13 +25,7 @@ interface DataTableProps<TData, TValue> {
 }
 
 // Mobile card component for video data
-function MobileCard({
-  item,
-  index,
-}: {
-  item: YouTubeTableData | TikTokTableData;
-  index: number;
-}) {
+function MobileCard({ item, index }: { item: YouTubeTableData | TikTokTableData; index: number }) {
   const getScoreColor = (score: number) => {
     if (score >= 10) return 'text-green-400 bg-green-400/10';
     if (score >= 5) return 'text-yellow-400 bg-yellow-400/10';

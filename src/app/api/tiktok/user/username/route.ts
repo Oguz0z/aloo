@@ -8,10 +8,7 @@ export async function GET(request: NextRequest) {
   const username = searchParams.get('username');
 
   if (!username) {
-    return NextResponse.json(
-      { error: 'Query parameter "username" is required' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'Query parameter "username" is required' }, { status: 400 });
   }
 
   try {
@@ -21,10 +18,7 @@ export async function GET(request: NextRequest) {
     const userInfo = await getUserInfo(userId, username);
 
     if (!userInfo) {
-      return NextResponse.json(
-        { error: `User @${username} not found` },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: `User @${username} not found` }, { status: 404 });
     }
 
     // Then, fetch user's posts using secUid

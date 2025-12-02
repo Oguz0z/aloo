@@ -15,9 +15,7 @@ export default function LoginPage() {
           <AuthForm mode="login" />
         </div>
 
-        <p className="mt-6 text-center text-sm text-white/40">
-          This is an invite-only app.
-        </p>
+        <p className="mt-6 text-center text-sm text-white/40">This is an invite-only app.</p>
       </div>
     </div>
   );
