@@ -9,7 +9,10 @@ export async function POST(request: NextRequest) {
     const ip = request.headers.get('x-forwarded-for') || 'unknown';
     const rateLimit = checkRateLimit(`auth:${ip}`, RATE_LIMITS.auth);
     if (!rateLimit.success) {
-      return NextResponse.json({ error: 'Too many attempts. Please try again later.' }, { status: 429 });
+      return NextResponse.json(
+        { error: 'Too many attempts. Please try again later.' },
+        { status: 429 }
+      );
     }
 
     let body;

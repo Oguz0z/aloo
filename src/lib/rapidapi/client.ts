@@ -22,7 +22,11 @@ export async function getRapidApiKey(userId: string): Promise<string> {
       return decrypted;
     } catch (error) {
       console.error('Failed to decrypt RapidAPI key:', error);
-      throw new ApiError('Invalid RapidAPI key. Please re-enter it in Settings.', 'RAPIDAPI_KEY_INVALID', 400);
+      throw new ApiError(
+        'Invalid RapidAPI key. Please re-enter it in Settings.',
+        'RAPIDAPI_KEY_INVALID',
+        400
+      );
     }
   }
 

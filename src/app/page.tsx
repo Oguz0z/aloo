@@ -15,6 +15,8 @@ import { ProcessingLoader } from '@/components/processing-loader';
 import {
   DataTable,
   youtubeColumns,
+  tiktokColumns,
+  instagramColumns,
   repurposeColumns,
   scriptsColumns,
 } from '@/components/data-table';
@@ -434,82 +436,82 @@ export default function Home() {
               continue;
             }
 
-          if (eventType === 'progress') {
-            // Map step to user-friendly status with progress indicators
-            // Steps: extracting(1) -> analyzing(2) -> processing_chunk(3-N) -> generating_hooks -> finalizing(N+1)
-            const stepMessages: Record<
-              string,
-              { status: string; subtitle: string; baseProgress: number }
-            > = {
-              extracting: {
-                status: 'Extracting transcript',
-                subtitle: 'Fetching video content...',
-                baseProgress: 10,
-              },
-              analyzing: {
-                status: 'Analyzing content',
-                subtitle: 'Preparing for repurposing...',
-                baseProgress: 20,
-              },
-              processing_chunk: {
-                status: 'Repurposing content',
-                subtitle: 'AI is transforming your script...',
-                baseProgress: 30, // 30-85% range for chunks
-              },
-              generating_hooks: {
-                status: 'Generating hooks',
-                subtitle: 'Creating engaging openers...',
-                baseProgress: 90,
-              },
-              finalizing: {
-                status: 'Finalizing',
-                subtitle: 'Almost done...',
-                baseProgress: 95,
-              },
-            };
+            if (eventType === 'progress') {
+              // Map step to user-friendly status with progress indicators
+              // Steps: extracting(1) -> analyzing(2) -> processing_chunk(3-N) -> generating_hooks -> finalizing(N+1)
+              const stepMessages: Record<
+                string,
+                { status: string; subtitle: string; baseProgress: number }
+              > = {
+                extracting: {
+                  status: 'Extracting transcript',
+                  subtitle: 'Fetching video content...',
+                  baseProgress: 10,
+                },
+                analyzing: {
+                  status: 'Analyzing content',
+                  subtitle: 'Preparing for repurposing...',
+                  baseProgress: 20,
+                },
+                processing_chunk: {
+                  status: 'Repurposing content',
+                  subtitle: 'AI is transforming your script...',
+                  baseProgress: 30, // 30-85% range for chunks
+                },
+                generating_hooks: {
+                  status: 'Generating hooks',
+                  subtitle: 'Creating engaging openers...',
+                  baseProgress: 90,
+                },
+                finalizing: {
+                  status: 'Finalizing',
+                  subtitle: 'Almost done...',
+                  baseProgress: 95,
+                },
+              };
 
-            const stepInfo = stepMessages[data.step] || {
-              status: data.message,
-              subtitle: '',
-              baseProgress: 50,
-            };
-            setProcessingStatus(stepInfo.status);
-            setProcessingSubtitle(stepInfo.subtitle);
+              const stepInfo = stepMessages[data.step] || {
+                status: data.message,
+                subtitle: '',
+                baseProgress: 50,
+              };
+              setProcessingStatus(stepInfo.status);
+              setProcessingSubtitle(stepInfo.subtitle);
 
-            // Calculate progress based on step
-            if (data.step === 'processing_chunk' && data.current && data.total) {
-              // Chunk processing: 30% to 85%
-              const chunkProgress = (data.current / data.total) * 55 + 30;
-              setProcessingProgress({
-                current: Math.round(chunkProgress),
-                total: 100,
-              });
-            } else {
-              // Other steps: use base progress
-              setProcessingProgress({
-                current: stepInfo.baseProgress,
-                total: 100,
-              });
+              // Calculate progress based on step
+              if (data.step === 'processing_chunk' && data.current && data.total) {
+                // Chunk processing: 30% to 85%
+                const chunkProgress = (data.current / data.total) * 55 + 30;
+                setProcessingProgress({
+                  current: Math.round(chunkProgress),
+                  total: 100,
+                });
+              } else {
+                // Other steps: use base progress
+                setProcessingProgress({
+                  current: stepInfo.baseProgress,
+                  total: 100,
+                });
+              }
+            } else if (eventType === 'complete') {
+              toast.success(
+                data.alreadyExists
+                  ? 'Script already exists'
+                  : `Repurposed successfully (${data.chunksProcessed} chunks)`
+              );
+              // Refresh scripts and navigate to scripts view
+              const scriptsResponse = await fetch('/api/scripts');
+              if (scriptsResponse.ok) {
+                const scriptsData = await scriptsResponse.json();
+                setScripts(scriptsData.scripts);
+              }
+              setSearchQuery('');
+              setViewMode('scripts');
+            } else if (eventType === 'error') {
+              throw new Error(data.error || 'Failed to repurpose');
             }
-          } else if (eventType === 'complete') {
-            toast.success(
-              data.alreadyExists
-                ? 'Script already exists'
-                : `Repurposed successfully (${data.chunksProcessed} chunks)`
-            );
-            // Refresh scripts and navigate to scripts view
-            const scriptsResponse = await fetch('/api/scripts');
-            if (scriptsResponse.ok) {
-              const scriptsData = await scriptsResponse.json();
-              setScripts(scriptsData.scripts);
-            }
-            setSearchQuery('');
-            setViewMode('scripts');
-          } else if (eventType === 'error') {
-            throw new Error(data.error || 'Failed to repurpose');
           }
         }
-      }
       } finally {
         reader.releaseLock();
       }
@@ -552,7 +554,11 @@ export default function Home() {
     return (
       <>
         {isProcessing && (
-          <ProcessingLoader status={processingStatus} subtitle={processingSubtitle} progress={processingProgress} />
+          <ProcessingLoader
+            status={processingStatus}
+            subtitle={processingSubtitle}
+            progress={processingProgress}
+          />
         )}
         <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
           <div className="mx-auto max-w-7xl">
@@ -748,7 +754,11 @@ export default function Home() {
     return (
       <>
         {isProcessing && (
-          <ProcessingLoader status={processingStatus} subtitle={processingSubtitle} progress={processingProgress} />
+          <ProcessingLoader
+            status={processingStatus}
+            subtitle={processingSubtitle}
+            progress={processingProgress}
+          />
         )}
         <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
           <div className="mx-auto max-w-7xl">
@@ -830,7 +840,13 @@ export default function Home() {
 
             {/* Data Table */}
             <DataTable
-              columns={youtubeColumns}
+              columns={
+                selectedPlatform === 'tiktok'
+                  ? tiktokColumns
+                  : selectedPlatform === 'instagram'
+                    ? instagramColumns
+                    : youtubeColumns
+              }
               data={tableData}
               isLoading={isSearching}
               skeletonRows={10}
@@ -844,7 +860,13 @@ export default function Home() {
   return (
     <>
       {showPreLoader && <PreLoader onComplete={() => setShowPreLoader(false)} />}
-      {isProcessing && <ProcessingLoader status={processingStatus} subtitle={processingSubtitle} progress={processingProgress} />}
+      {isProcessing && (
+        <ProcessingLoader
+          status={processingStatus}
+          subtitle={processingSubtitle}
+          progress={processingProgress}
+        />
+      )}
       <div className="relative flex min-h-screen flex-col items-center justify-center px-3 sm:px-4">
         {/* Top Right Controls */}
         <div className="fixed right-3 top-3 sm:right-6 sm:top-6 z-40 flex items-center gap-3">

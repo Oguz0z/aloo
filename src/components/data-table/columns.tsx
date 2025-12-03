@@ -5,10 +5,11 @@ import { ColumnDef } from '@tanstack/react-table';
 import { ExternalLink, Check, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { toast } from 'sonner';
-import { YouTubeTableData, TikTokTableData, Platform } from '@/types';
+import { YouTubeTableData, TikTokTableData, InstagramTableData, Platform } from '@/types';
 import { formatNumber } from '@/lib/utils';
 
 // Repurpose button component with loading state
+// Only YouTube is currently supported for repurposing
 function RepurposeButton({
   row,
   platform,
@@ -18,6 +19,11 @@ function RepurposeButton({
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+
+  // Repurpose is only available for YouTube videos
+  if (platform !== 'youtube') {
+    return <span className="text-white/30 text-xs">Not available</span>;
+  }
 
   const handleRepurpose = async () => {
     if (isLoading || isSaved) return;
@@ -262,6 +268,96 @@ export const tiktokColumns: ColumnDef<TikTokTableData>[] = [
   },
 ];
 
+export const instagramColumns: ColumnDef<InstagramTableData>[] = [
+  {
+    accessorKey: 'username',
+    header: 'Username',
+    cell: ({ row }) => (
+      <div className="flex items-center gap-2">
+        {row.original.thumbnail && (
+          <Image
+            src={row.original.thumbnail}
+            alt=""
+            width={24}
+            height={24}
+            className="h-6 w-6 rounded-full object-cover"
+          />
+        )}
+        <span className="font-medium text-white">@{row.getValue('username')}</span>
+      </div>
+    ),
+  },
+  {
+    accessorKey: 'title',
+    header: 'Caption',
+    cell: ({ row }) => (
+      <div className="max-w-[200px] truncate" title={row.getValue('title')}>
+        {row.getValue('title')}
+      </div>
+    ),
+  },
+  {
+    accessorKey: 'views',
+    header: 'Views',
+    cell: ({ row }) => <span className="tabular-nums">{formatNumber(row.getValue('views'))}</span>,
+  },
+  {
+    accessorKey: 'likes',
+    header: 'Likes',
+    cell: ({ row }) => <span className="tabular-nums">{formatNumber(row.getValue('likes'))}</span>,
+  },
+  {
+    accessorKey: 'comments',
+    header: 'Comments',
+    cell: ({ row }) => (
+      <span className="tabular-nums">{formatNumber(row.getValue('comments'))}</span>
+    ),
+  },
+  {
+    accessorKey: 'engagementScore',
+    header: 'Engagement',
+    cell: ({ row }) => {
+      const score = row.getValue('engagementScore') as number;
+      const getScoreColor = (score: number) => {
+        if (score >= 10) return 'text-green-400 bg-green-400/10';
+        if (score >= 5) return 'text-yellow-400 bg-yellow-400/10';
+        if (score >= 2) return 'text-orange-400 bg-orange-400/10';
+        return 'text-red-400 bg-red-400/10';
+      };
+
+      return (
+        <span
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${getScoreColor(score)}`}
+        >
+          {score.toFixed(2)}%
+        </span>
+      );
+    },
+  },
+  {
+    accessorKey: 'url',
+    header: 'URL',
+    cell: ({ row }) => (
+      <a
+        href={row.getValue('url')}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 transition-colors"
+      >
+        <ExternalLink className="h-3 w-3" />
+        <span className="text-xs">View</span>
+      </a>
+    ),
+    enableSorting: false,
+  },
+  {
+    id: 'repurpose',
+    header: 'Repurpose',
+    cell: ({ row }) => <RepurposeButton row={row.original} platform="instagram" />,
+    enableSorting: false,
+  },
+];
+
 // ============ REPURPOSE VIDEO COLUMNS ============
 
 import type { RepurposeVideo, Script } from '@/types';
@@ -317,7 +413,7 @@ function ExtractTranscriptButton({
   };
 
   if (video.platform !== 'youtube') {
-    return <span className="text-white/30 text-xs">N/A</span>;
+    return <span className="text-white/30 text-xs">Not available</span>;
   }
 
   return (

@@ -573,7 +573,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                   disabled={llmModels.length === 0 || isSavingModel}
-                  className="flex w-full items-center justify-between rounded-lg border border-white/20 bg-white/[0.05] px-3 py-2.5 min-h-[44px] text-left text-sm text-white transition-colors hover:border-white/30 focus:border-white/40 focus:outline-none disabled:opacity-50"
+                  className="flex w-full items-center justify-between rounded-lg border border-white/20 bg-white/[0.05] pl-3 pr-4 py-2.5 min-h-[44px] text-left text-sm text-white transition-colors hover:border-white/30 focus:border-white/40 focus:outline-none disabled:opacity-50"
                 >
                   <span className="truncate">
                     {selectedModel ? (

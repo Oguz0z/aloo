@@ -17,7 +17,10 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
     // Rate limit expensive operations
     const rateLimit = checkRateLimit(`repurpose:${userId}`, RATE_LIMITS.expensive);
     if (!rateLimit.success) {
-      return NextResponse.json({ error: 'Rate limit exceeded. Please try again later.' }, { status: 429 });
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please try again later.' },
+        { status: 429 }
+      );
     }
 
     const result = await repurposeScriptById(userId, id);

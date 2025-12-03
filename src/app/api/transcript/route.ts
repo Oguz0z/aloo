@@ -13,7 +13,10 @@ export async function POST(request: NextRequest) {
     // Rate limit expensive operations
     const rateLimit = checkRateLimit(`transcript:${userId}`, RATE_LIMITS.expensive);
     if (!rateLimit.success) {
-      return NextResponse.json({ error: 'Rate limit exceeded. Please try again later.' }, { status: 429 });
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please try again later.' },
+        { status: 429 }
+      );
     }
 
     let body;

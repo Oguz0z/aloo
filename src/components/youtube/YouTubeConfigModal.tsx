@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { X, Loader2, Check } from 'lucide-react';
+import { X, Loader2, Check, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface YouTubeConfigModalProps {
@@ -207,68 +207,80 @@ export function YouTubeConfigModal({ isOpen, onClose }: YouTubeConfigModalProps)
                 <label className="mb-1.5 sm:mb-2 block text-xs sm:text-sm font-medium text-white/70">
                   Date Range
                 </label>
-                <select
-                  value={config.dateRange}
-                  onChange={(e) => updateConfig('dateRange', e.target.value)}
-                  className="w-full rounded-lg border border-white/15 bg-white/[0.03] px-3 py-2 min-h-[44px] text-xs sm:text-sm text-white transition-colors hover:border-white/25 focus:border-white/40 focus:outline-none"
-                >
-                  {DATE_RANGE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value} className="bg-neutral-900">
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={config.dateRange}
+                    onChange={(e) => updateConfig('dateRange', e.target.value)}
+                    className="w-full appearance-none rounded-lg border border-white/20 bg-white/[0.05] pl-3 pr-10 py-2.5 min-h-[44px] text-xs sm:text-sm text-white transition-colors hover:border-white/30 focus:border-white/40 focus:outline-none cursor-pointer"
+                  >
+                    {DATE_RANGE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value} className="bg-neutral-900">
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+                </div>
               </div>
 
               <div>
                 <label className="mb-1.5 sm:mb-2 block text-xs sm:text-sm font-medium text-white/70">
                   Duration
                 </label>
-                <select
-                  value={config.videoDuration}
-                  onChange={(e) => updateConfig('videoDuration', e.target.value)}
-                  className="w-full rounded-lg border border-white/15 bg-white/[0.03] px-3 py-2 min-h-[44px] text-xs sm:text-sm text-white transition-colors hover:border-white/25 focus:border-white/40 focus:outline-none"
-                >
-                  {VIDEO_DURATION_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value} className="bg-neutral-900">
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={config.videoDuration}
+                    onChange={(e) => updateConfig('videoDuration', e.target.value)}
+                    className="w-full appearance-none rounded-lg border border-white/20 bg-white/[0.05] pl-3 pr-10 py-2.5 min-h-[44px] text-xs sm:text-sm text-white transition-colors hover:border-white/30 focus:border-white/40 focus:outline-none cursor-pointer"
+                  >
+                    {VIDEO_DURATION_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value} className="bg-neutral-900">
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+                </div>
               </div>
 
               <div>
                 <label className="mb-1.5 sm:mb-2 block text-xs sm:text-sm font-medium text-white/70">
                   Sort By
                 </label>
-                <select
-                  value={config.order}
-                  onChange={(e) => updateConfig('order', e.target.value)}
-                  className="w-full rounded-lg border border-white/15 bg-white/[0.03] px-3 py-2 min-h-[44px] text-xs sm:text-sm text-white transition-colors hover:border-white/25 focus:border-white/40 focus:outline-none"
-                >
-                  {ORDER_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value} className="bg-neutral-900">
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={config.order}
+                    onChange={(e) => updateConfig('order', e.target.value)}
+                    className="w-full appearance-none rounded-lg border border-white/20 bg-white/[0.05] pl-3 pr-10 py-2.5 min-h-[44px] text-xs sm:text-sm text-white transition-colors hover:border-white/30 focus:border-white/40 focus:outline-none cursor-pointer"
+                  >
+                    {ORDER_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value} className="bg-neutral-900">
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+                </div>
               </div>
 
               <div>
                 <label className="mb-1.5 sm:mb-2 block text-xs sm:text-sm font-medium text-white/70">
                   Region
                 </label>
-                <select
-                  value={config.region}
-                  onChange={(e) => updateConfig('region', e.target.value)}
-                  className="w-full rounded-lg border border-white/15 bg-white/[0.03] px-3 py-2 min-h-[44px] text-xs sm:text-sm text-white transition-colors hover:border-white/25 focus:border-white/40 focus:outline-none"
-                >
-                  {REGION_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value} className="bg-neutral-900">
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={config.region}
+                    onChange={(e) => updateConfig('region', e.target.value)}
+                    className="w-full appearance-none rounded-lg border border-white/20 bg-white/[0.05] pl-3 pr-10 py-2.5 min-h-[44px] text-xs sm:text-sm text-white transition-colors hover:border-white/30 focus:border-white/40 focus:outline-none cursor-pointer"
+                  >
+                    {REGION_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value} className="bg-neutral-900">
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+                </div>
               </div>
             </div>
 

@@ -10,16 +10,18 @@ export default function GlobalError({
   return (
     <html>
       <body>
-        <div style={{
-          display: 'flex',
-          minHeight: '100vh',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: '#0a0a0a',
-          color: '#fafafa',
-          fontFamily: 'system-ui, sans-serif',
-        }}>
+        <div
+          style={{
+            display: 'flex',
+            minHeight: '100vh',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#0a0a0a',
+            color: '#fafafa',
+            fontFamily: 'system-ui, sans-serif',
+          }}
+        >
           <div style={{ textAlign: 'center' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
               Something went wrong
