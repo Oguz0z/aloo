@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import { Loader2, UserPlus, Copy, Check, Users } from 'lucide-react';
+import { Loader2, UserPlus, Copy, Check, Users, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface User {
@@ -18,37 +18,50 @@ export default function AdminPage() {
   const [email, setEmail] = useState('');
   const [adminSecret, setAdminSecret] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const fetchUsers = useCallback(async () => {
-    if (!adminSecret) return;
+  const fetchUsers = useCallback(async (secret: string) => {
+    if (!secret) return false;
 
     setIsLoading(true);
     try {
       const res = await fetch('/api/admin/invite', {
-        headers: { Authorization: `Bearer ${adminSecret}` },
+        headers: { Authorization: `Bearer ${secret}` },
       });
       const data = await res.json();
       if (res.ok) {
         setUsers(data.users);
+        return true;
       } else {
-        toast.error(data.error || 'Failed to fetch users');
+        toast.error(data.error || 'Invalid admin secret');
+        return false;
       }
     } catch {
-      toast.error('Failed to fetch users');
+      toast.error('Failed to verify admin secret');
+      return false;
     } finally {
       setIsLoading(false);
     }
-  }, [adminSecret]);
+  }, []);
 
-  useEffect(() => {
-    if (adminSecret) {
-      fetchUsers();
-    }
-  }, [adminSecret, fetchUsers]);
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminSecret) return;
+
+    setIsVerifying(true);
+    const success = await fetchUsers(adminSecret);
+    setIsVerified(success);
+    setIsVerifying(false);
+  };
+
+  const handleRefresh = () => {
+    fetchUsers(adminSecret);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,7 +90,7 @@ export default function AdminPage() {
       toast.success('User invited!');
       setInviteLink(data.inviteUrl);
       setEmail('');
-      fetchUsers();
+      fetchUsers(adminSecret);
     } catch {
       toast.error('Failed to invite user');
     } finally {
@@ -103,22 +116,48 @@ export default function AdminPage() {
         </div>
 
         {/* Admin Secret Input */}
-        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
-          <label className="block text-xs font-medium text-white/60 mb-2">Admin Secret</label>
-          <input
-            type="password"
-            value={adminSecret}
-            onChange={(e) => setAdminSecret(e.target.value)}
-            placeholder="Enter admin secret to continue"
-            className={cn(
-              'w-full rounded-xl border border-white/10 bg-white/[0.03] py-3 px-4',
-              'text-white placeholder:text-white/30',
-              'focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/10'
-            )}
-          />
-        </div>
+        {!isVerified && (
+          <form
+            onSubmit={handleVerify}
+            className="rounded-2xl border border-white/10 bg-white/[0.02] p-6"
+          >
+            <label className="block text-xs font-medium text-white/60 mb-2">Admin Secret</label>
+            <div className="flex gap-3">
+              <input
+                type="password"
+                value={adminSecret}
+                onChange={(e) => setAdminSecret(e.target.value)}
+                placeholder="Enter admin secret to continue"
+                disabled={isVerifying}
+                className={cn(
+                  'flex-1 rounded-xl border border-white/10 bg-white/[0.03] py-3 px-4',
+                  'text-white placeholder:text-white/30',
+                  'focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/10',
+                  'disabled:opacity-50'
+                )}
+              />
+              <button
+                type="submit"
+                disabled={isVerifying || !adminSecret}
+                className={cn(
+                  'rounded-xl border border-white/20 bg-white/10 py-3 px-6',
+                  'text-sm font-medium text-white',
+                  'hover:bg-white/20 hover:border-white/30',
+                  'disabled:opacity-50 disabled:cursor-not-allowed',
+                  'flex items-center gap-2'
+                )}
+              >
+                {isVerifying ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Verify'
+                )}
+              </button>
+            </div>
+          </form>
+        )}
 
-        {adminSecret && (
+        {isVerified && (
           <>
             {/* Invite Form */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
@@ -195,10 +234,23 @@ export default function AdminPage() {
 
             {/* Users List */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
-              <h2 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Users ({users.length})
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-medium text-white flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Users ({users.length})
+                </h2>
+                <button
+                  onClick={handleRefresh}
+                  disabled={isLoading}
+                  className={cn(
+                    'p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors',
+                    'disabled:opacity-50 disabled:cursor-not-allowed'
+                  )}
+                  title="Refresh users"
+                >
+                  <RefreshCw className={cn('h-4 w-4 text-white/60', isLoading && 'animate-spin')} />
+                </button>
+              </div>
 
               {isLoading ? (
                 <div className="flex justify-center py-8">
