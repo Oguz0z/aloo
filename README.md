@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Social-Bro
 
-## Getting Started
+Search YouTube, TikTok & Instagram from one place. Find content, grab transcripts, repurpose scripts.
 
-First, run the development server:
+## What It Does
+
+- **Unified Search** - Query all platforms at once, filter by creator with @username
+- **Content Repurposing** - Extract YouTube transcripts and generate shorter versions for other platforms
+- **Hook Generator** - AI-powered opening lines to grab attention
+- **Search History** - Save and revisit your searches
+
+## Quick Start
 
 ```bash
+# Install deps
+npm install
+
+# Set up your database
+npm run db:migrate
+
+# Run it
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [localhost:3000](http://localhost:3000) and you're good.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Tech Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Next.js 16 • React 19 • PostgreSQL • Prisma • TailwindCSS • NextAuth
 
-## Learn More
+## Author
 
-To learn more about Next.js, take a look at the following resources:
+Built by [Ken](https://github.com/KenKaiii) — subscribe to [YouTube](https://youtube.com/@kenkaidoesai) and join the [Skool community](https://www.skool.com/kenkai) for more AI/dev content.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## License
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
