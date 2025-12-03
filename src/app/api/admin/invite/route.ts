@@ -2,17 +2,31 @@ import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { prisma } from '@/lib/db';
 
-// Simple admin secret for now - you can use this via curl or a script
-const ADMIN_SECRET = process.env.ADMIN_SECRET || 'change-me-in-production';
+// Admin secret - must be configured in production
+const ADMIN_SECRET = process.env.ADMIN_SECRET;
+
+function validateAdminSecret() {
+  if (!ADMIN_SECRET) {
+    throw new Error('ADMIN_SECRET environment variable must be configured');
+  }
+  return ADMIN_SECRET;
+}
 
 export async function POST(request: Request) {
   try {
+    const adminSecret = validateAdminSecret();
     const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${ADMIN_SECRET}`) {
+    if (authHeader !== `Bearer ${adminSecret}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { email, name } = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+    const { email, name } = body;
 
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
@@ -38,7 +52,10 @@ export async function POST(request: Request) {
     });
 
     // Build the invite URL
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXTAUTH_URL;
+    if (!baseUrl) {
+      throw new Error('NEXTAUTH_URL environment variable must be configured');
+    }
     const inviteUrl = `${baseUrl}/set-password?token=${inviteToken}`;
 
     return NextResponse.json({
@@ -56,8 +73,9 @@ export async function POST(request: Request) {
 // List all invited users (for admin)
 export async function GET(request: Request) {
   try {
+    const adminSecret = validateAdminSecret();
     const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${ADMIN_SECRET}`) {
+    if (authHeader !== `Bearer ${adminSecret}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

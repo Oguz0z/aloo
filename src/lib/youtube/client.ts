@@ -17,9 +17,14 @@ export async function getYouTubeApiKey(userId: string): Promise<string> {
   });
 
   if (apiKeyRecord) {
-    const decrypted = decrypt(apiKeyRecord.key);
-    setCachedApiKey(userId, 'youtube', decrypted);
-    return decrypted;
+    try {
+      const decrypted = decrypt(apiKeyRecord.key);
+      setCachedApiKey(userId, 'youtube', decrypted);
+      return decrypted;
+    } catch (error) {
+      console.error('Failed to decrypt YouTube API key:', error);
+      throw new ApiError('Invalid YouTube API key. Please re-enter it in Settings.', 'YOUTUBE_KEY_INVALID', 400);
+    }
   }
 
   // Fallback to environment variable

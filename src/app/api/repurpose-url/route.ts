@@ -4,6 +4,7 @@ import { getYouTubeTranscript } from '@/lib/rapidapi';
 import { repurposeTranscript, type ProgressUpdate } from '@/lib/repurpose';
 import { requireValidUser } from '@/lib/auth-utils';
 import { isApiError } from '@/lib/errors';
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 // Force dynamic rendering and disable buffering
 export const dynamic = 'force-dynamic';
@@ -81,7 +82,22 @@ async function handleStreamingRequest(request: NextRequest) {
     try {
       const userId = await requireValidUser();
 
-      const body = await request.json();
+      // Rate limit expensive operations
+      const rateLimit = checkRateLimit(`repurpose:${userId}`, RATE_LIMITS.expensive);
+      if (!rateLimit.success) {
+        await writeEvent('error', { error: 'Rate limit exceeded. Please try again later.' });
+        await writer.close();
+        return;
+      }
+
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        await writeEvent('error', { error: 'Invalid JSON body' });
+        await writer.close();
+        return;
+      }
       const { url, lang = 'en' } = body as { url: string; lang?: string };
 
       if (!url) {

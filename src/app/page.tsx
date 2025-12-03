@@ -397,35 +397,42 @@ export default function Home() {
       const decoder = new TextDecoder();
       let buffer = '';
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
+          buffer += decoder.decode(value, { stream: true });
 
-        // SSE format: "event: type\ndata: json\n\n"
-        // Split on double newlines to get complete events
-        const events = buffer.split('\n\n');
-        buffer = events.pop() || ''; // Keep incomplete event in buffer
+          // SSE format: "event: type\ndata: json\n\n"
+          // Split on double newlines to get complete events
+          const events = buffer.split('\n\n');
+          buffer = events.pop() || ''; // Keep incomplete event in buffer
 
-        for (const event of events) {
-          if (!event.trim()) continue;
+          for (const event of events) {
+            if (!event.trim()) continue;
 
-          const lines = event.split('\n');
-          let eventType = '';
-          let eventData = '';
+            const lines = event.split('\n');
+            let eventType = '';
+            let eventData = '';
 
-          for (const line of lines) {
-            if (line.startsWith('event: ')) {
-              eventType = line.slice(7);
-            } else if (line.startsWith('data: ')) {
-              eventData = line.slice(6);
+            for (const line of lines) {
+              if (line.startsWith('event: ')) {
+                eventType = line.slice(7);
+              } else if (line.startsWith('data: ')) {
+                eventData = line.slice(6);
+              }
             }
-          }
 
-          if (!eventType || !eventData) continue;
+            if (!eventType || !eventData) continue;
 
-          const data = JSON.parse(eventData);
+            let data;
+            try {
+              data = JSON.parse(eventData);
+            } catch {
+              console.error('Failed to parse SSE event data:', eventData);
+              continue;
+            }
 
           if (eventType === 'progress') {
             // Map step to user-friendly status with progress indicators
@@ -502,6 +509,9 @@ export default function Home() {
             throw new Error(data.error || 'Failed to repurpose');
           }
         }
+      }
+      } finally {
+        reader.releaseLock();
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to repurpose');

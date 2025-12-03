@@ -18,9 +18,14 @@ export async function getOpenRouterApiKey(userId: string): Promise<string> {
   });
 
   if (apiKeyRecord) {
-    const decrypted = decrypt(apiKeyRecord.key);
-    setCachedApiKey(userId, 'openrouter', decrypted);
-    return decrypted;
+    try {
+      const decrypted = decrypt(apiKeyRecord.key);
+      setCachedApiKey(userId, 'openrouter', decrypted);
+      return decrypted;
+    } catch (error) {
+      console.error('Failed to decrypt OpenRouter API key:', error);
+      throw new ApiError('Invalid OpenRouter API key. Please re-enter it in Settings.', 'OPENROUTER_KEY_INVALID', 400);
+    }
   }
 
   // Fallback to environment variable
@@ -119,7 +124,7 @@ export async function createChatCompletion({
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
-      'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+      'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000',
       'X-Title': 'Social Bro',
     },
     body: JSON.stringify({

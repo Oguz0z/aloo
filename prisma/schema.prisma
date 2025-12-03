@@ -85,6 +85,7 @@ model SearchResult {
   createdAt   DateTime @default(now())
 
   @@unique([searchId, externalId])
+  @@index([searchId])
   @@index([platform])
   @@index([externalId])
 }
@@ -124,6 +125,7 @@ model SavedSearchResult {
   commentCount BigInt      @default(0)
 
   @@index([savedSearchId])
+  @@index([externalId])
 }
 
 // Saved items - individual videos/posts saved by user

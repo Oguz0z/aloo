@@ -3,13 +3,25 @@ import { prisma } from '@/lib/db';
 import { getYouTubeTranscript } from '@/lib/rapidapi';
 import { requireValidUser } from '@/lib/auth-utils';
 import { isApiError } from '@/lib/errors';
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 // POST - Extract transcript from a repurpose video and save as script
 export async function POST(request: NextRequest) {
   try {
     const userId = await requireValidUser();
 
-    const body = await request.json();
+    // Rate limit expensive operations
+    const rateLimit = checkRateLimit(`transcript:${userId}`, RATE_LIMITS.expensive);
+    if (!rateLimit.success) {
+      return NextResponse.json({ error: 'Rate limit exceeded. Please try again later.' }, { status: 429 });
+    }
+
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
     const { repurposeVideoId, lang = 'en' } = body as {
       repurposeVideoId: string;
       lang?: string;
