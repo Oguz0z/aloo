@@ -9,14 +9,17 @@ import {
   CRMTabs,
   TabsContent,
   MetricsRow,
+  TasksWidget,
   LeadsTable,
   KanbanBoard,
   FilterSidebar,
   defaultFilters,
   TagManager,
+  BulkActions,
 } from '@/components/crm';
 import type { TabValue, FilterState, ViewMode } from '@/components/crm';
 import { LeadDetailModal } from '@/components/leads';
+import { TaskSlideOver } from '@/components/tasks';
 import type { Lead, PipelineStats, LeadStatus } from '@/types';
 
 // LocalStorage key for view preference
@@ -42,6 +45,10 @@ export default function CRMPage() {
   // Modal state
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isTagManagerOpen, setIsTagManagerOpen] = useState(false);
+  const [isTaskSlideOverOpen, setIsTaskSlideOverOpen] = useState(false);
+
+  // Bulk selection state
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
 
   // Load view mode from LocalStorage on mount
   useEffect(() => {
@@ -192,6 +199,53 @@ export default function CRMPage() {
     fetchStats();
   };
 
+  // Bulk selection handlers
+  const handleToggleSelect = useCallback((leadId: string) => {
+    setSelectedLeadIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(leadId)) {
+        next.delete(leadId);
+      } else {
+        next.add(leadId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    setSelectedLeadIds((prev) => {
+      const allSelected = filteredLeads.every((l) => prev.has(l.id));
+      if (allSelected) {
+        return new Set();
+      } else {
+        return new Set(filteredLeads.map((l) => l.id));
+      }
+    });
+  }, [filteredLeads]);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedLeadIds(new Set());
+  }, []);
+
+  const handleBulkUpdate = useCallback(() => {
+    fetchLeads();
+    fetchStats();
+  }, [fetchLeads, fetchStats]);
+
+  // Handle sort change from table header
+  const handleSortChange = useCallback((field: 'savedAt' | 'leadScore' | 'name' | 'nextFollowUpAt') => {
+    setFilters((prev) => ({
+      ...prev,
+      sortBy: field,
+      sortOrder: prev.sortBy === field && prev.sortOrder === 'desc' ? 'asc' : 'desc',
+    }));
+  }, []);
+
+  // Get selected leads for BulkActions
+  const selectedLeads = useMemo(() => {
+    return leads.filter((l) => selectedLeadIds.has(l.id));
+  }, [leads, selectedLeadIds]);
+
   // Handle status change from Kanban drag & drop
   const handleStatusChange = async (leadId: string, newStatus: LeadStatus) => {
     // Optimistically update UI
@@ -230,6 +284,7 @@ export default function CRMPage() {
         onViewModeChange={handleViewModeChange}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        onOpenTaskSlideOver={() => setIsTaskSlideOverOpen(true)}
       />
 
       {/* Tabs */}
@@ -244,6 +299,9 @@ export default function CRMPage() {
               conversionRate={metrics.conversionRate}
               isLoading={isLoading && !stats}
             />
+
+            {/* Tasks Widget - Due Today */}
+            <TasksWidget onOpenSlideOver={() => setIsTaskSlideOverOpen(true)} />
 
             {/* Mobile Filter Button */}
             <div className="lg:hidden mb-4">
@@ -296,6 +354,12 @@ export default function CRMPage() {
                     isLoading={isLoading}
                     onLeadClick={handleLeadClick}
                     onDelete={handleDeleteLead}
+                    selectedLeadIds={selectedLeadIds}
+                    onToggleSelect={handleToggleSelect}
+                    onSelectAll={handleSelectAll}
+                    sortBy={filters.sortBy}
+                    sortOrder={filters.sortOrder}
+                    onSortChange={handleSortChange}
                   />
                 </div>
 
@@ -329,6 +393,21 @@ export default function CRMPage() {
         isOpen={isTagManagerOpen}
         onClose={() => setIsTagManagerOpen(false)}
       />
+
+      {/* Task SlideOver */}
+      <TaskSlideOver
+        isOpen={isTaskSlideOverOpen}
+        onClose={() => setIsTaskSlideOverOpen(false)}
+      />
+
+      {/* Bulk Actions */}
+      {selectedLeads.length > 0 && (
+        <BulkActions
+          selectedLeads={selectedLeads}
+          onClearSelection={handleClearSelection}
+          onBulkUpdate={handleBulkUpdate}
+        />
+      )}
     </CRMLayout>
   );
 }

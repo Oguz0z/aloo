@@ -200,45 +200,49 @@ export function TagManager({ isOpen, onClose, onTagsChange }: TagManagerProps) {
                   >
                     {editingId === tag.id ? (
                       /* Edit mode */
-                      <>
-                        <div className="flex items-center gap-2 flex-1">
-                          <div className="flex gap-1">
-                            {TAG_COLORS.map((color) => (
-                              <button
-                                key={color}
-                                onClick={() => setEditColor(color)}
-                                className={`w-5 h-5 rounded-full transition-transform ${
-                                  editColor === color ? 'scale-125 ring-2 ring-white/50' : ''
-                                }`}
-                                style={{ backgroundColor: color }}
-                              />
-                            ))}
-                          </div>
+                      <div className="flex-1 space-y-3">
+                        {/* Color picker row */}
+                        <div className="flex items-center gap-1.5">
+                          {TAG_COLORS.map((color) => (
+                            <button
+                              key={color}
+                              onClick={() => setEditColor(color)}
+                              className={`w-6 h-6 rounded-full transition-all flex-shrink-0 ${
+                                editColor === color
+                                  ? 'ring-2 ring-white ring-offset-2 ring-offset-zinc-900'
+                                  : 'hover:scale-110'
+                              }`}
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                        </div>
+                        {/* Input row */}
+                        <div className="flex items-center gap-2">
                           <input
                             type="text"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
-                            className="flex-1 px-2 py-1 bg-white/5 border border-white/10 rounded text-sm text-white outline-none focus:border-white/20"
+                            className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white outline-none focus:border-white/20"
                             autoFocus
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') handleUpdate(tag.id);
                               if (e.key === 'Escape') setEditingId(null);
                             }}
                           />
+                          <button
+                            onClick={() => handleUpdate(tag.id)}
+                            className="p-2 rounded-lg text-green-400 hover:bg-green-500/10"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setEditingId(null)}
+                            className="p-2 rounded-lg text-gray-500 hover:bg-white/5"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
                         </div>
-                        <button
-                          onClick={() => handleUpdate(tag.id)}
-                          className="p-1.5 rounded text-green-400 hover:bg-green-500/10"
-                        >
-                          <Check className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setEditingId(null)}
-                          className="p-1.5 rounded text-gray-500 hover:bg-white/5"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </>
+                      </div>
                     ) : (
                       /* View mode */
                       <>
@@ -275,26 +279,30 @@ export function TagManager({ isOpen, onClose, onTagsChange }: TagManagerProps) {
 
                 {/* Create new tag form */}
                 {isCreating && (
-                  <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/20">
-                    <div className="flex items-center gap-2 flex-1">
-                      <div className="flex gap-1">
-                        {TAG_COLORS.map((color) => (
-                          <button
-                            key={color}
-                            onClick={() => setNewColor(color)}
-                            className={`w-5 h-5 rounded-full transition-transform ${
-                              newColor === color ? 'scale-125 ring-2 ring-white/50' : ''
-                            }`}
-                            style={{ backgroundColor: color }}
-                          />
-                        ))}
-                      </div>
+                  <div className="p-3 bg-white/5 rounded-lg border border-white/20 space-y-3">
+                    {/* Color picker row */}
+                    <div className="flex items-center gap-1.5">
+                      {TAG_COLORS.map((color) => (
+                        <button
+                          key={color}
+                          onClick={() => setNewColor(color)}
+                          className={`w-6 h-6 rounded-full transition-all flex-shrink-0 ${
+                            newColor === color
+                              ? 'ring-2 ring-white ring-offset-2 ring-offset-zinc-900'
+                              : 'hover:scale-110'
+                          }`}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                    {/* Input row */}
+                    <div className="flex items-center gap-2">
                       <input
                         type="text"
                         value={newName}
                         onChange={(e) => setNewName(e.target.value)}
                         placeholder="Tag name..."
-                        className="flex-1 px-2 py-1 bg-white/5 border border-white/10 rounded text-sm text-white placeholder-gray-600 outline-none focus:border-white/20"
+                        className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 outline-none focus:border-white/20"
                         autoFocus
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleCreate();
@@ -304,22 +312,22 @@ export function TagManager({ isOpen, onClose, onTagsChange }: TagManagerProps) {
                           }
                         }}
                       />
+                      <button
+                        onClick={handleCreate}
+                        className="p-2 rounded-lg text-green-400 hover:bg-green-500/10"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsCreating(false);
+                          setNewName('');
+                        }}
+                        className="p-2 rounded-lg text-gray-500 hover:bg-white/5"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
-                    <button
-                      onClick={handleCreate}
-                      className="p-1.5 rounded text-green-400 hover:bg-green-500/10"
-                    >
-                      <Check className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsCreating(false);
-                        setNewName('');
-                      }}
-                      className="p-1.5 rounded text-gray-500 hover:bg-white/5"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
                   </div>
                 )}
               </div>

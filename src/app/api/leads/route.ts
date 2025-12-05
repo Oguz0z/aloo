@@ -31,9 +31,11 @@ export async function GET(request: Request) {
     // Tags filter
     const tags = searchParams.get('tags'); // comma-separated tag IDs
 
-    // Sorting
-    const sortBy = searchParams.get('sortBy') || 'savedAt';
-    const sortOrder = searchParams.get('sortOrder') || 'desc';
+    // Sorting - whitelist allowed fields to prevent injection
+    const ALLOWED_SORT_FIELDS = ['savedAt', 'leadScore', 'name', 'status', 'lastContactedAt', 'nextFollowUpAt', 'updatedAt'];
+    const requestedSortBy = searchParams.get('sortBy') || 'savedAt';
+    const sortBy = ALLOWED_SORT_FIELDS.includes(requestedSortBy) ? requestedSortBy : 'savedAt';
+    const sortOrder = searchParams.get('sortOrder') === 'asc' ? 'asc' : 'desc';
 
     // Build where clause
     const where: Record<string, unknown> = {

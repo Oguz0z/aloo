@@ -146,3 +146,15 @@ export function getErrorMessage(error: unknown): string {
   }
   return 'An unexpected error occurred';
 }
+
+/**
+ * Safely parse JSON from request body
+ * Returns null if parsing fails (invalid JSON)
+ */
+export async function parseRequestBody<T = unknown>(request: Request): Promise<T | null> {
+  try {
+    return await request.json();
+  } catch {
+    return null;
+  }
+}

@@ -38,7 +38,7 @@ export default function Home() {
   // Search state
   const [selectedIndustry, setSelectedIndustry] = useState<IndustryType | null>(null);
   const [city, setCity] = useState('');
-  const [country, setCountry] = useState('au');
+  const [country, setCountry] = useState('us');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<BusinessSearchResult[]>([]);
   const [deepAnalysis, setDeepAnalysis] = useState(false);

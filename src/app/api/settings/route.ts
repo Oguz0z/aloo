@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { encrypt, decrypt, maskApiKey } from '@/lib/crypto';
 import { requireUserId, requireValidUser } from '@/lib/auth-utils';
 import { invalidateCachedApiKey } from '@/lib/cache';
+import { parseRequestBody } from '@/lib/errors';
 
 export type ApiKeyService = 'youtube' | 'rapidapi' | 'openrouter';
 
@@ -65,8 +66,11 @@ export async function POST(request: Request) {
   try {
     const userId = await requireValidUser();
 
-    const body = await request.json();
-    const { service, key } = body as { service: ApiKeyService; key: string };
+    const body = await parseRequestBody<{ service?: ApiKeyService; key?: string }>(request);
+    if (!body) {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+    const { service, key } = body;
 
     if (!service || !key) {
       return NextResponse.json({ error: 'Service and key are required' }, { status: 400 });

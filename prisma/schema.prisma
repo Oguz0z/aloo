@@ -23,6 +23,7 @@ model User {
   businessSearches BusinessSearch[]
   leads            Lead[]
   tags             Tag[]
+  tasks            Task[]
 
   @@index([email])
   @@index([inviteToken])
@@ -133,6 +134,9 @@ model Lead {
   // Tags (many-to-many)
   tags LeadTag[]
 
+  // Tasks linked to this lead
+  tasks Task[]
+
   // User can only save a business once
   @@unique([userId, placeId])
   @@index([userId])
@@ -187,4 +191,35 @@ model Tag {
   // Each user can only have one tag with the same name
   @@unique([userId, name])
   @@index([userId])
+}
+
+// Task - reminders and to-do items
+model Task {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Task details
+  title       String
+  description String?
+  type        String @default("other") // call, email, meeting, follow_up, other
+
+  // Scheduling
+  dueAt    DateTime
+  priority String   @default("medium") // low, medium, high, urgent
+
+  // Completion tracking
+  completedAt DateTime?
+
+  // Optional lead association
+  leadId String?
+  lead   Lead?  @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([leadId])
+  @@index([dueAt])
 }

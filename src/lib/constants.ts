@@ -1,4 +1,10 @@
-import type { IndustryTypeConfig, LeadStatusConfig, IndustryType } from '@/types';
+import type {
+  IndustryTypeConfig,
+  LeadStatusConfig,
+  IndustryType,
+  TaskTypeConfig,
+  TaskPriorityConfig,
+} from '@/types';
 
 // Industry types for business categorization
 export const INDUSTRY_TYPES: IndustryTypeConfig[] = [
@@ -81,14 +87,39 @@ export const LEAD_STATUSES: LeadStatusConfig[] = [
   { id: 'not_interested', label: 'Not Interested', color: '#6b7280', bgColor: 'transparent' },
 ];
 
-// Country codes for search
+// Country codes for search with example cities
+// US is first as default selection
 export const COUNTRIES = [
-  { code: 'au', name: 'Australia' },
-  { code: 'us', name: 'United States' },
-  { code: 'gb', name: 'United Kingdom' },
-  { code: 'ca', name: 'Canada' },
-  { code: 'nz', name: 'New Zealand' },
-  { code: 'de', name: 'Germany' },
+  { code: 'us', name: 'United States', examples: ['New York, Los Angeles, Chicago'] },
+  { code: 'ca', name: 'Canada', examples: ['Toronto, Vancouver, Montreal'] },
+  { code: 'mx', name: 'Mexico', examples: ['Mexico City, Guadalajara, Monterrey'] },
+  { code: 'gb', name: 'United Kingdom', examples: ['London, Manchester, Birmingham'] },
+  { code: 'au', name: 'Australia', examples: ['Sydney, Melbourne, Brisbane'] },
+  { code: 'nz', name: 'New Zealand', examples: ['Auckland, Wellington, Christchurch'] },
+  { code: 'de', name: 'Germany', examples: ['Berlin, Munich, Hamburg'] },
+  { code: 'at', name: 'Austria', examples: ['Vienna, Salzburg, Graz'] },
+  { code: 'ch', name: 'Switzerland', examples: ['Zurich, Basel, Bern'] },
+  { code: 'fr', name: 'France', examples: ['Paris, Lyon, Marseille'] },
+  { code: 'es', name: 'Spain', examples: ['Madrid, Barcelona, Valencia'] },
+  { code: 'it', name: 'Italy', examples: ['Rome, Milan, Naples'] },
+  { code: 'nl', name: 'Netherlands', examples: ['Amsterdam, Rotterdam, The Hague'] },
+  { code: 'be', name: 'Belgium', examples: ['Brussels, Antwerp, Ghent'] },
+  { code: 'pl', name: 'Poland', examples: ['Warsaw, Krakow, Gdansk'] },
+  { code: 'se', name: 'Sweden', examples: ['Stockholm, Gothenburg, Malmo'] },
+  { code: 'dk', name: 'Denmark', examples: ['Copenhagen, Aarhus, Odense'] },
+  { code: 'no', name: 'Norway', examples: ['Oslo, Bergen, Trondheim'] },
+  { code: 'fi', name: 'Finland', examples: ['Helsinki, Tampere, Turku'] },
+  { code: 'pt', name: 'Portugal', examples: ['Lisbon, Porto, Faro'] },
+  { code: 'ie', name: 'Ireland', examples: ['Dublin, Cork, Galway'] },
+  { code: 'br', name: 'Brazil', examples: ['Sao Paulo, Rio de Janeiro, Brasilia'] },
+  { code: 'ar', name: 'Argentina', examples: ['Buenos Aires, Cordoba, Rosario'] },
+  { code: 'co', name: 'Colombia', examples: ['Bogota, Medellin, Cali'] },
+  { code: 'cl', name: 'Chile', examples: ['Santiago, Valparaiso, Concepcion'] },
+  { code: 'jp', name: 'Japan', examples: ['Tokyo, Osaka, Kyoto'] },
+  { code: 'kr', name: 'South Korea', examples: ['Seoul, Busan, Incheon'] },
+  { code: 'sg', name: 'Singapore', examples: ['Singapore'] },
+  { code: 'in', name: 'India', examples: ['Mumbai, Delhi, Bangalore'] },
+  { code: 'za', name: 'South Africa', examples: ['Johannesburg, Cape Town, Durban'] },
 ];
 
 // Contact log types
@@ -105,3 +136,21 @@ export const OUTCOMES = [
   { id: 'neutral', label: 'Neutral', color: '#6b7280' },
   { id: 'negative', label: 'Negative', color: '#ef4444' },
 ];
+
+// Task types
+export const TASK_TYPES: TaskTypeConfig[] = [
+  { id: 'call', label: 'Phone Call', icon: 'phone' },
+  { id: 'email', label: 'Email', icon: 'mail' },
+  { id: 'meeting', label: 'Meeting', icon: 'calendar' },
+  { id: 'follow_up', label: 'Follow Up', icon: 'clock' },
+  { id: 'other', label: 'Other', icon: 'check-circle' },
+];
+
+// Task priorities
+export const TASK_PRIORITIES: TaskPriorityConfig[] = [
+  { id: 'low', label: 'Low', color: '#6b7280' },
+  { id: 'medium', label: 'Medium', color: '#3b82f6' },
+  { id: 'high', label: 'High', color: '#f97316' },
+  { id: 'urgent', label: 'Urgent', color: '#ef4444' },
+];
+

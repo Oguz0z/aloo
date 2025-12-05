@@ -5,6 +5,7 @@ export type { ViewMode } from './CRMHeader';
 export { CRMTabs, TabsContent } from './CRMTabs';
 export type { TabValue } from './CRMTabs';
 export { MetricsRow } from './MetricsRow';
+export { TasksWidget } from './TasksWidget';
 
 // Table components
 export { LeadsTable } from './LeadsTable';
@@ -22,9 +23,9 @@ export { KanbanCard } from './KanbanCard';
 export { TagManager } from './TagManager';
 export { TagBadge } from './TagBadge';
 
+// Bulk actions
+export { BulkActions } from './BulkActions';
+
 // Filter components
 export { FilterSidebar, defaultFilters } from './FilterSidebar';
 export type { FilterState } from './FilterSidebar';
-
-// Legacy (keeping for backwards compatibility until migration is complete)
-export { LeadsList } from './LeadsList';

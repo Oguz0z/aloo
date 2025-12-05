@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { parseRequestBody } from '@/lib/errors';
 
 // GET - Fetch user's tags
 export async function GET() {
@@ -43,7 +44,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = await parseRequestBody<{ name?: string; color?: string }>(request);
+    if (!body) {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
     const { name, color } = body;
 
     if (!name || !color) {

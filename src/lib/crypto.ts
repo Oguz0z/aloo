@@ -12,7 +12,9 @@ function getEncryptionKey(): Buffer {
         'Generate one with: openssl rand -base64 32'
     );
   }
-  return scryptSync(secret, 'salt', KEY_LENGTH);
+  // Use ENCRYPTION_SALT from env or derive from secret for unique salt per installation
+  const salt = process.env.ENCRYPTION_SALT || secret.slice(0, 16);
+  return scryptSync(secret, salt, KEY_LENGTH);
 }
 
 export function encrypt(text: string): string {

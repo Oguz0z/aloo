@@ -105,6 +105,15 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
     }
 
+    // Verify tag ownership
+    const tag = await prisma.tag.findUnique({
+      where: { id: tagId },
+    });
+
+    if (!tag || tag.userId !== session.user.id) {
+      return NextResponse.json({ error: 'Tag not found' }, { status: 404 });
+    }
+
     // Remove the link
     await prisma.leadTag.deleteMany({
       where: {

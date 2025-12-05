@@ -11,14 +11,32 @@ interface LeadsTableRowProps {
   lead: Lead;
   onLeadClick: (lead: Lead) => void;
   onDelete: (leadId: string) => void;
+  isSelected?: boolean;
+  onToggleSelect?: (leadId: string) => void;
 }
 
-export function LeadsTableRow({ lead, onLeadClick, onDelete }: LeadsTableRowProps) {
+export function LeadsTableRow({
+  lead,
+  onLeadClick,
+  onDelete,
+  isSelected,
+  onToggleSelect,
+}: LeadsTableRowProps) {
   return (
     <TableRow
-      className="border-white/10 hover:bg-white/[0.02] cursor-pointer"
+      className={`border-white/10 hover:bg-white/[0.02] cursor-pointer ${isSelected ? 'bg-white/[0.04]' : ''}`}
       onClick={() => onLeadClick(lead)}
     >
+      {onToggleSelect !== undefined && (
+        <TableCell onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={isSelected || false}
+            onChange={() => onToggleSelect(lead.id)}
+            className="w-4 h-4 rounded border-white/20 bg-transparent text-white focus:ring-0 focus:ring-offset-0 cursor-pointer"
+          />
+        </TableCell>
+      )}
       <TableCell>
         <div>
           <p className="text-gray-200 font-medium">{lead.name}</p>

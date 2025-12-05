@@ -21,10 +21,11 @@ import {
 import { toast } from 'sonner';
 import { CONTACT_TYPES, OUTCOMES } from '@/lib/constants';
 import { LeadScoreBadge } from './LeadScoreBadge';
-import { StatusBadge } from '@/components/crm/StatusBadge';
+import { StatusBadge } from '@/components/crm';
 import { StatusSelector } from './StatusSelector';
 import { OpportunitiesList } from './OpportunitiesList';
-import type { Lead, LeadStatus, ContactLogEntry } from '@/types';
+import { TaskList, TaskModal } from '@/components/tasks';
+import type { Lead, LeadStatus, ContactLogEntry, Task } from '@/types';
 
 interface LeadDetailModalProps {
   lead: Lead | null;
@@ -34,7 +35,7 @@ interface LeadDetailModalProps {
 }
 
 export function LeadDetailModal({ lead, isOpen, onClose, onUpdate }: LeadDetailModalProps) {
-  const [activeTab, setActiveTab] = useState<'details' | 'activity' | 'notes'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'activity' | 'tasks' | 'notes'>('details');
   const [contactLogs, setContactLogs] = useState<ContactLogEntry[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [notes, setNotes] = useState('');
@@ -48,6 +49,12 @@ export function LeadDetailModal({ lead, isOpen, onClose, onUpdate }: LeadDetailM
   const [newLogSummary, setNewLogSummary] = useState('');
   const [newLogOutcome, setNewLogOutcome] = useState('neutral');
   const [isAddingLog, setIsAddingLog] = useState(false);
+
+  // Tasks
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoadingTasks, setIsLoadingTasks] = useState(false);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   // Load contact logs
   const fetchContactLogs = useCallback(async () => {
@@ -66,14 +73,32 @@ export function LeadDetailModal({ lead, isOpen, onClose, onUpdate }: LeadDetailM
     }
   }, [lead]);
 
+  // Load tasks for this lead
+  const fetchTasks = useCallback(async () => {
+    if (!lead) return;
+    setIsLoadingTasks(true);
+    try {
+      const response = await fetch(`/api/tasks?leadId=${lead.id}&status=all`);
+      if (response.ok) {
+        const data = await response.json();
+        setTasks(data.tasks || []);
+      }
+    } catch {
+      console.error('Failed to fetch tasks');
+    } finally {
+      setIsLoadingTasks(false);
+    }
+  }, [lead]);
+
   // Initialize state when lead changes
   useEffect(() => {
     if (lead && isOpen) {
       setNotes(lead.notes || '');
       setFollowUpDate(lead.nextFollowUpAt ? lead.nextFollowUpAt.split('T')[0] : '');
       fetchContactLogs();
+      fetchTasks();
     }
-  }, [lead, isOpen, fetchContactLogs]);
+  }, [lead, isOpen, fetchContactLogs, fetchTasks]);
 
   // Close on escape
   useEffect(() => {
@@ -175,6 +200,50 @@ export function LeadDetailModal({ lead, isOpen, onClose, onUpdate }: LeadDetailM
     } finally {
       setIsAddingLog(false);
     }
+  };
+
+  // Task handlers
+  const handleTaskComplete = async (taskId: string, completed: boolean) => {
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          completedAt: completed ? new Date().toISOString() : null,
+        }),
+      });
+      if (response.ok) {
+        fetchTasks();
+        toast.success(completed ? 'Task completed' : 'Task reopened');
+      }
+    } catch {
+      toast.error('Failed to update task');
+    }
+  };
+
+  const handleTaskEdit = (task: Task) => {
+    setEditingTask(task);
+    setIsTaskModalOpen(true);
+  };
+
+  const handleTaskDelete = async (taskId: string) => {
+    if (!confirm('Delete this task?')) return;
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        fetchTasks();
+        toast.success('Task deleted');
+      }
+    } catch {
+      toast.error('Failed to delete task');
+    }
+  };
+
+  const handleTaskSave = () => {
+    fetchTasks();
+    setEditingTask(null);
   };
 
   const getContactIcon = (type: string) => {
@@ -287,7 +356,7 @@ export function LeadDetailModal({ lead, isOpen, onClose, onUpdate }: LeadDetailM
         {/* Tabs */}
         <div className="flex-shrink-0 border-b border-white/10">
           <div className="flex">
-            {(['details', 'activity', 'notes'] as const).map((tab) => (
+            {(['details', 'activity', 'tasks', 'notes'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -298,7 +367,8 @@ export function LeadDetailModal({ lead, isOpen, onClose, onUpdate }: LeadDetailM
                 }`}
               >
                 {tab === 'details' && 'Details'}
-                {tab === 'activity' && `Activity (${contactLogs.length})`}
+                {tab === 'activity' && `Contacts (${contactLogs.length})`}
+                {tab === 'tasks' && `Tasks (${tasks.filter((t) => !t.completedAt).length})`}
                 {tab === 'notes' && 'Notes'}
               </button>
             ))}
@@ -524,6 +594,46 @@ export function LeadDetailModal({ lead, isOpen, onClose, onUpdate }: LeadDetailM
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Tasks Tab */}
+          {activeTab === 'tasks' && (
+            <div className="space-y-4">
+              {/* Add Task Button */}
+              <button
+                onClick={() => {
+                  setEditingTask(null);
+                  setIsTaskModalOpen(true);
+                }}
+                className="w-full py-3 rounded-lg border border-dashed border-white/20 text-gray-500 text-sm hover:border-white/30 hover:text-gray-300 transition-colors flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add Task for {lead.name}
+              </button>
+
+              {/* Task List */}
+              <TaskList
+                tasks={tasks}
+                isLoading={isLoadingTasks}
+                onComplete={handleTaskComplete}
+                onEdit={handleTaskEdit}
+                onDelete={handleTaskDelete}
+                showCompleted={true}
+              />
+
+              {/* Task Modal */}
+              <TaskModal
+                isOpen={isTaskModalOpen}
+                onClose={() => {
+                  setIsTaskModalOpen(false);
+                  setEditingTask(null);
+                }}
+                onSave={handleTaskSave}
+                task={editingTask}
+                leadId={lead.id}
+                leadName={lead.name}
+              />
             </div>
           )}
 

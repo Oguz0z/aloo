@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Search, LayoutList, Kanban, Plus, Settings, History } from 'lucide-react';
 import { UserMenu } from '@/components/auth';
 import { getLastSearch, type CachedSearch } from '@/lib/search-cache';
+import { TasksDropdown } from '@/components/tasks';
 
 export type ViewMode = 'list' | 'kanban';
 
@@ -13,6 +14,7 @@ interface CRMHeaderProps {
   onViewModeChange: (mode: ViewMode) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  onOpenTaskSlideOver?: () => void;
 }
 
 export function CRMHeader({
@@ -20,6 +22,7 @@ export function CRMHeader({
   onViewModeChange,
   searchQuery,
   onSearchChange,
+  onOpenTaskSlideOver,
 }: CRMHeaderProps) {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   // Start with null to match server render, then load from localStorage after hydration
@@ -121,6 +124,9 @@ export function CRMHeader({
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">New Search</span>
             </Link>
+
+            {/* Tasks Dropdown */}
+            <TasksDropdown onOpenSlideOver={onOpenTaskSlideOver} />
 
             {/* Settings */}
             <Link

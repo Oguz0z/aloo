@@ -196,3 +196,45 @@ export interface GeocodeResult {
   displayName: string;
   country: string;
 }
+
+// Task types
+export type TaskType = 'call' | 'email' | 'meeting' | 'follow_up' | 'other';
+export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+// Task interface
+export interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  type: TaskType;
+  dueAt: string;
+  priority: TaskPriority;
+  completedAt?: string;
+  leadId?: string;
+  lead?: { id: string; name: string };
+  createdAt: string;
+}
+
+// Task statistics
+export interface TaskStats {
+  total: number;
+  pending: number;
+  completed: number;
+  overdue: number;
+  dueToday: number;
+}
+
+// Task type configuration
+export interface TaskTypeConfig {
+  id: TaskType;
+  label: string;
+  icon: string;
+}
+
+// Task priority configuration
+export interface TaskPriorityConfig {
+  id: TaskPriority;
+  label: string;
+  color: string;
+}
+
