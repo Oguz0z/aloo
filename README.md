@@ -20,23 +20,20 @@ cd aloo
 
 # Run setup (handles everything!)
 ./scripts/setup.sh
-```
 
-That's it! The setup script will:
-1. Install dependencies
-2. Let you choose SQLite (simple) or PostgreSQL (Docker)
-3. Generate all secrets automatically
-4. Set up the database
-5. Create your user account
-
-Then just run:
-```bash
+# Start the app
 npm run dev
 ```
 
 Open [localhost:3000](http://localhost:3000) and login with:
 - **Email:** `admin@aloo.com`
 - **Password:** `admin`
+
+That's it! The setup script automatically:
+1. Installs dependencies
+2. Creates SQLite database
+3. Generates all secrets
+4. Creates default admin user
 
 ## Manual Setup
 
@@ -46,16 +43,12 @@ If you prefer to set things up manually:
 # Install dependencies
 npm install
 
-# Copy and edit environment file
+# Copy and configure environment
 cp .env.example .env
 # Edit .env - generate secrets with: openssl rand -base64 32
 
-# For SQLite (default, no Docker needed):
-# DATABASE_URL is already set to "file:./data/aloo.db"
-
-# For PostgreSQL (requires Docker):
-# Uncomment the PostgreSQL DATABASE_URL in .env
-docker compose up -d
+# Create data directory
+mkdir -p data
 
 # Setup database
 npm run db:generate
@@ -72,7 +65,7 @@ npm run dev
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DATABASE_URL` | Yes | SQLite: `file:./data/aloo.db` or PostgreSQL connection string |
+| `DATABASE_URL` | Yes | `file:./data/aloo.db` |
 | `NEXTAUTH_SECRET` | Yes | Auth encryption key |
 | `NEXTAUTH_URL` | Yes | App URL (http://localhost:3000) |
 | `ADMIN_SECRET` | Yes | Secret for /admin user management |
@@ -92,23 +85,10 @@ npm run lint         # Run ESLint
 npm run typecheck    # Run TypeScript checks
 ```
 
-## Database Options
-
-### SQLite (Default)
-- Zero configuration
-- No Docker required
-- Perfect for local development and small deployments
-- Data stored in `data/aloo.db`
-
-### PostgreSQL
-- Production-ready
-- Better for concurrent users
-- Requires Docker: `docker compose up -d`
-
 ## Tech Stack
 
 - **Framework**: Next.js 16, React 19
-- **Database**: SQLite or PostgreSQL + Prisma ORM
+- **Database**: SQLite + Prisma ORM
 - **Auth**: NextAuth.js v5 (credentials)
 - **Styling**: TailwindCSS v4
 - **UI**: Radix UI, Lucide Icons
@@ -118,14 +98,10 @@ npm run typecheck    # Run TypeScript checks
 ### Database Issues
 
 ```bash
-# Reset database (SQLite)
+# Reset database
 rm -rf data/aloo.db
 npm run db:push
-
-# Reset database (PostgreSQL)
-docker compose down -v
-docker compose up -d
-npm run db:push
+npm run setup:user
 ```
 
 ### Port Conflicts
@@ -133,9 +109,6 @@ npm run db:push
 ```bash
 # Check what's using port 3000
 lsof -i :3000
-
-# For PostgreSQL port 5433
-lsof -i :5433
 ```
 
 ## Author
