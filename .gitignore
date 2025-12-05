@@ -40,4 +40,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# prisma generated
 /src/generated/prisma
+
+# database
+/data/
+
+# PostgreSQL / Docker (for local dev only)
+docker-compose.yml
+docker-compose*.yml
