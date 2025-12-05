@@ -208,26 +208,43 @@ npm run db:push --silent 2>/dev/null || npm run db:migrate --silent
 print_success "Database schema applied"
 
 # ===========================================
-# Step 6: Create First User
+# Step 6: Create Default User
 # ===========================================
-print_step "Creating your user account..."
+print_step "Creating default admin user..."
 
-echo ""
-read -p "Email: " USER_EMAIL
-read -p "Name: " USER_NAME
-read -s -p "Password: " USER_PASSWORD
-echo ""
+# Create default user via Node script
+node -e "
+const { PrismaClient } = require('./src/generated/prisma/client');
+const { PrismaBetterSqlite3 } = require('@prisma/adapter-better-sqlite3');
+const bcrypt = require('bcrypt');
 
-if [ -n "$USER_EMAIL" ] && [ -n "$USER_PASSWORD" ]; then
-    # Run the setup-user script non-interactively
-    echo "$USER_EMAIL
-$USER_NAME
-$USER_PASSWORD" | npm run setup:user --silent 2>/dev/null || {
-        print_warning "Could not create user automatically. Run 'npm run setup:user' manually."
+async function createDefaultUser() {
+  const filePath = process.env.DATABASE_URL.replace('file:', '');
+  const adapter = new PrismaBetterSqlite3({ url: filePath });
+  const prisma = new PrismaClient({ adapter });
+
+  try {
+    const existing = await prisma.user.findUnique({ where: { email: 'admin@aloo.com' } });
+    if (!existing) {
+      const hash = await bcrypt.hash('admin', 10);
+      await prisma.user.create({
+        data: {
+          email: 'admin@aloo.com',
+          name: 'Admin',
+          password: hash,
+          createdAt: new Date()
+        }
+      });
+      console.log('created');
+    } else {
+      console.log('exists');
     }
-else
-    print_warning "Skipped user creation. Run 'npm run setup:user' later."
-fi
+  } finally {
+    await prisma.\$disconnect();
+  }
+}
+createDefaultUser();
+" 2>/dev/null && print_success "Default user created" || print_warning "Could not create default user"
 
 # ===========================================
 # Done!
@@ -241,6 +258,10 @@ echo "Start the development server:"
 echo -e "  ${BLUE}npm run dev${NC}"
 echo ""
 echo "Then open: http://localhost:3000"
+echo ""
+echo -e "${YELLOW}Default Login:${NC}"
+echo "  Email:    admin@aloo.com"
+echo "  Password: admin"
 echo ""
 
 if [ "$DB_CHOICE" = "2" ]; then

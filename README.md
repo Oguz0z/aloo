@@ -34,7 +34,9 @@ Then just run:
 npm run dev
 ```
 
-Open [localhost:3000](http://localhost:3000) and login.
+Open [localhost:3000](http://localhost:3000) and login with:
+- **Email:** `admin@aloo.com`
+- **Password:** `admin`
 
 ## Manual Setup
 
