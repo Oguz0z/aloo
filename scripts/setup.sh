@@ -163,12 +163,13 @@ print_step "Creating default admin user..."
 
 # Create default user via tsx (ESM compatible)
 npx tsx -e "
+import path from 'node:path';
 import { PrismaClient } from './src/generated/prisma/client.js';
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 import bcrypt from 'bcrypt';
 
-const filePath = process.env.DATABASE_URL.replace('file:', '');
-const adapter = new PrismaBetterSqlite3({ url: filePath });
+const dbPath = path.join(process.cwd(), 'data', 'aloo.db');
+const adapter = new PrismaBetterSqlite3({ url: dbPath });
 const prisma = new PrismaClient({ adapter });
 
 async function createDefaultUser() {

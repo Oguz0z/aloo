@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { PrismaClient } from '@/generated/prisma/client';
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 
@@ -6,17 +7,11 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient(): PrismaClient {
-  const databaseUrl = process.env.DATABASE_URL;
+  // Use absolute path to database in project root
+  const dbPath = path.join(process.cwd(), 'data', 'aloo.db');
 
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL environment variable is not set');
-  }
-
-  // Extract file path from SQLite URL (file:./data/aloo.db -> ./data/aloo.db)
-  const filePath = databaseUrl.replace('file:', '');
-
-  // Create Prisma adapter with URL config
-  const adapter = new PrismaBetterSqlite3({ url: filePath });
+  // Create Prisma adapter with absolute path
+  const adapter = new PrismaBetterSqlite3({ url: dbPath });
 
   return new PrismaClient({ adapter });
 }

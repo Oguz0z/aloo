@@ -1,24 +1,20 @@
+import path from 'node:path';
 import { PrismaClient } from '../src/generated/prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { Pool } from 'pg';
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 import bcrypt from 'bcrypt';
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  throw new Error('DATABASE_URL environment variable is not set');
-}
-
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
+// Use absolute path to database
+const dbPath = path.join(process.cwd(), 'data', 'aloo.db');
+const adapter = new PrismaBetterSqlite3({ url: dbPath });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
   // eslint-disable-next-line no-console
   console.info('Seeding database...');
 
-  // Create admin user
-  const adminEmail = 'admin@socialbro.com';
-  const adminPassword = 'admin123123';
+  // Create default admin user
+  const adminEmail = 'admin@aloo.com';
+  const adminPassword = 'admin';
 
   const existingAdmin = await prisma.user.findUnique({
     where: { email: adminEmail },

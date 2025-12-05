@@ -3,6 +3,7 @@
  * Run with: npm run setup:user
  */
 
+import path from 'node:path';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 import bcrypt from 'bcrypt';
@@ -41,9 +42,9 @@ async function main() {
 
   console.log('\n📡 Connecting to database...');
 
-  // Extract file path from SQLite URL
-  const filePath = databaseUrl.replace('file:', '');
-  const adapter = new PrismaBetterSqlite3({ url: filePath });
+  // Use absolute path to database
+  const dbPath = path.join(process.cwd(), 'data', 'aloo.db');
+  const adapter = new PrismaBetterSqlite3({ url: dbPath });
   const prisma = new PrismaClient({ adapter });
 
   try {
