@@ -1,46 +1,28 @@
 import { PrismaClient } from '@/generated/prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { Pool } from 'pg';
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
-  pool: Pool | undefined;
 };
 
-function createPool(): Pool {
-  const connectionString = process.env.DATABASE_URL;
+function createPrismaClient(): PrismaClient {
+  const databaseUrl = process.env.DATABASE_URL;
 
-  if (!connectionString) {
+  if (!databaseUrl) {
     throw new Error('DATABASE_URL environment variable is not set');
   }
 
-  return new Pool({
-    connectionString,
-    max: 20,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
-  });
-}
+  // Extract file path from SQLite URL (file:./data/aloo.db -> ./data/aloo.db)
+  const filePath = databaseUrl.replace('file:', '');
 
-function createPrismaClient(): PrismaClient {
-  if (!globalForPrisma.pool) {
-    globalForPrisma.pool = createPool();
+  // Create Prisma adapter with URL config
+  const adapter = new PrismaBetterSqlite3({ url: filePath });
 
-    // Handle pool errors gracefully - reconnect on error
-    globalForPrisma.pool.on('error', (err) => {
-      console.error('Postgres pool error:', err.message);
-      // Pool will automatically recreate connections
-    });
-  }
-
-  const adapter = new PrismaPg(globalForPrisma.pool);
-
-  return new PrismaClient({
-    adapter,
-    log: ['error', 'warn'],
-  });
+  return new PrismaClient({ adapter });
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
-globalForPrisma.prisma = prisma;
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
+}

@@ -4,153 +4,28 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
 }
 
 // User model for authentication (invite-only)
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  password    String?  // Null until user sets their password
+  id          String    @id @default(cuid())
+  email       String    @unique
+  password    String? // Null until user sets their password
   name        String?
-  inviteToken String?  @unique // Token for setting password
-  invitedAt   DateTime @default(now())
+  inviteToken String?   @unique // Token for setting password
+  invitedAt   DateTime  @default(now())
   createdAt   DateTime? // Set when user completes signup
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime  @updatedAt
 
   // User's data
-  searches        Search[]
-  savedSearches   SavedSearch[]
-  savedItems      SavedItem[]
-  apiKeys         ApiKey[]
-  youtubeConfig   YouTubeConfig?
-  repurposeVideos RepurposeVideo[]
-  scripts         Script[]
-  settings        UserSettings?
+  apiKeys          ApiKey[]
+  businessSearches BusinessSearch[]
+  leads            Lead[]
+  tags             Tag[]
 
   @@index([email])
   @@index([inviteToken])
-}
-
-// Platform enum
-enum Platform {
-  youtube
-  instagram
-  tiktok
-}
-
-// Search history - stores user searches
-model Search {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  query     String
-  platform  Platform
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Results from this search
-  results SearchResult[]
-
-  @@index([userId])
-  @@index([platform])
-  @@index([createdAt])
-}
-
-// Search results - cached results from API calls
-model SearchResult {
-  id          String   @id @default(cuid())
-  searchId    String
-  search      Search   @relation(fields: [searchId], references: [id], onDelete: Cascade)
-
-  // Common fields across platforms
-  externalId  String   // YouTube video ID, Instagram post ID, TikTok video ID
-  platform    Platform
-  title       String
-  description String?  @db.Text
-  thumbnail   String?
-  url         String
-
-  // Creator/Channel info
-  creatorId   String?
-  creatorName String?
-
-  // Stats
-  viewCount   BigInt?
-  likeCount   BigInt?
-  commentCount BigInt?
-
-  // Dates
-  publishedAt DateTime?
-  createdAt   DateTime @default(now())
-
-  @@unique([searchId, externalId])
-  @@index([searchId])
-  @@index([platform])
-  @@index([externalId])
-}
-
-// Saved searches - user bookmarked searches with full data
-model SavedSearch {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  query     String
-  platform  Platform
-  createdAt DateTime @default(now())
-
-  // Saved results
-  results SavedSearchResult[]
-
-  @@unique([userId, query, platform])
-  @@index([userId])
-  @@index([platform])
-  @@index([createdAt])
-}
-
-// Saved search results - stores the actual data from when search was saved
-model SavedSearchResult {
-  id            String      @id @default(cuid())
-  savedSearchId String
-  savedSearch   SavedSearch @relation(fields: [savedSearchId], references: [id], onDelete: Cascade)
-
-  // Video data
-  externalId   String
-  title        String
-  creatorName  String
-  thumbnail    String?
-  url          String
-  viewCount    BigInt      @default(0)
-  likeCount    BigInt      @default(0)
-  commentCount BigInt      @default(0)
-
-  @@index([savedSearchId])
-  @@index([externalId])
-}
-
-// Saved items - individual videos/posts saved by user
-model SavedItem {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  externalId  String
-  platform    Platform
-  title       String
-  description String?  @db.Text
-  thumbnail   String?
-  url         String
-  creatorId   String?
-  creatorName String?
-  viewCount   BigInt?
-  likeCount   BigInt?
-  commentCount BigInt?
-  publishedAt DateTime?
-  savedAt     DateTime @default(now())
-
-  @@unique([userId, externalId, platform])
-  @@index([userId])
-  @@index([platform])
-  @@index([savedAt])
 }
 
 // API Keys - stores encrypted API keys for different services per user
@@ -158,8 +33,8 @@ model ApiKey {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  service   String   // e.g., "youtube", "rapidapi"
-  key       String   // encrypted API key
+  service   String // "rapidapi_maps"
+  key       String // encrypted API key
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -168,94 +43,148 @@ model ApiKey {
   @@index([service])
 }
 
-// YouTube search configuration per user
-model YouTubeConfig {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  maxResults   Int      @default(25) // 1-50
-  dateRange    String   @default("any") // any, day, week, month
-  region       String   @default("US") // ISO 3166-1 alpha-2 country code
-  videoDuration String  @default("any") // any, short (< 4min), medium, long (> 20min)
-  order        String   @default("relevance") // date, rating, relevance, title, viewCount
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-}
-
-// Repurpose videos - videos saved for repurposing
-model RepurposeVideo {
+// Business Search - stores search queries
+model BusinessSearch {
   id           String   @id @default(cuid())
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  externalId   String   // YouTube video ID, TikTok video ID, etc.
-  platform     Platform
-  title        String
-  description  String?  @db.Text
-  thumbnail    String?
-  url          String
-  creatorId    String?
-  creatorName  String?
-  viewCount    BigInt?
-  likeCount    BigInt?
-  commentCount BigInt?
-  publishedAt  DateTime?
-  savedAt      DateTime @default(now())
+  businessType String // e.g., "restaurant", "salon", "gym"
+  city         String
+  country      String   @default("au")
+  latitude     Float?
+  longitude    Float?
+  createdAt    DateTime @default(now())
 
-  // Related scripts (transcripts extracted from this video)
-  scripts      Script[]
+  // Results from this search
+  results BusinessSearchResult[]
 
-  @@unique([userId, externalId, platform])
   @@index([userId])
-  @@index([platform])
+  @@index([createdAt])
+}
+
+// Business Search Results - raw results from API
+model BusinessSearchResult {
+  id       String         @id @default(cuid())
+  searchId String
+  search   BusinessSearch @relation(fields: [searchId], references: [id], onDelete: Cascade)
+
+  // Google Maps data
+  placeId     String // Google Place ID
+  name        String
+  address     String?
+  phone       String?
+  website     String?
+  rating      Float?
+  reviewCount Int?
+  types       String? // JSON array of business types (was String[])
+  photoUrl    String?
+  mapsUrl     String?
+
+  // Calculated scores
+  leadScore Int @default(0)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  @@unique([searchId, placeId])
+  @@index([searchId])
+  @@index([placeId])
+}
+
+// Saved Leads - businesses saved to CRM
+model Lead {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Business info
+  placeId      String // Google Place ID
+  name         String
+  address      String?
+  phone        String?
+  website      String?
+  rating       Float?
+  reviewCount  Int?
+  industryType String  @default("other")
+  photoUrl     String?
+  mapsUrl      String?
+
+  // Lead scoring
+  leadScore      Int     @default(0)
+  scoreBreakdown String? // JSON object (was Json?)
+
+  // CRM fields - status as string instead of enum for SQLite compatibility
+  // Values: new, contacted, called, proposal_sent, negotiating, won, lost, not_interested
+  status        String  @default("new")
+  notes         String?
+  opportunities String? // JSON array (was String[])
+
+  // Contact tracking
+  lastContactedAt DateTime?
+  nextFollowUpAt  DateTime?
+
+  // Timestamps
+  savedAt   DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Contact history
+  contactLogs ContactLog[]
+
+  // Tags (many-to-many)
+  tags LeadTag[]
+
+  // User can only save a business once
+  @@unique([userId, placeId])
+  @@index([userId])
+  @@index([status])
+  @@index([leadScore])
   @@index([savedAt])
 }
 
-// LLM Models - synced from OpenRouter
-model LlmModel {
-  id              String   @id @default(cuid())
-  modelId         String   @unique // OpenRouter model ID e.g. "openai/gpt-4"
-  name            String   // Display name
-  provider        String   // Provider name e.g. "OpenAI"
-  promptPrice     Float    // Price per 1M tokens (prompt)
-  completionPrice Float    // Price per 1M tokens (completion)
-  contextLength   Int?     // Max context length
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+// Junction table for Lead-Tag many-to-many (SQLite compatible)
+model LeadTag {
+  id     String @id @default(cuid())
+  leadId String
+  tagId  String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
-  @@index([provider])
-  @@index([modelId])
+  @@unique([leadId, tagId])
+  @@index([leadId])
+  @@index([tagId])
 }
 
-// User Settings - stores user preferences
-model UserSettings {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  selectedModelId String?  // Selected LLM model ID from OpenRouter
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}
+// Contact Log - track interactions with leads
+model ContactLog {
+  id     String @id @default(cuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
-// Scripts - user-created scripts for content
-model Script {
-  id                String          @id @default(cuid())
-  userId            String
-  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title             String
-  caption           String?         @db.Text
-  script            String          @db.Text // Original transcript
-  repurposedScript  String?         @db.Text // AI-rewritten version
-  hooks             Json?           // Array of 3 generated hooks
-  notes             String?         @db.Text
-  status            String          @default("draft") // draft, in_progress, completed
-  sourceUrl         String?         // Original video URL if extracted from a video
-  repurposeVideoId  String?         // Link to the repurpose video if applicable
-  repurposeVideo    RepurposeVideo? @relation(fields: [repurposeVideoId], references: [id], onDelete: SetNull)
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  type    String // email, call, meeting, note
+  summary String
+  outcome String? // positive, negative, neutral
 
-  @@index([userId])
-  @@index([status])
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
   @@index([createdAt])
-  @@index([repurposeVideoId])
+}
+
+// Tag - custom labels for organizing leads
+model Tag {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name  String // Tag name
+  color String // Hex color (e.g., "#3b82f6")
+
+  // Many-to-many relation with Leads via junction table
+  leads LeadTag[]
+
+  createdAt DateTime @default(now())
+
+  // Each user can only have one tag with the same name
+  @@unique([userId, name])
+  @@index([userId])
 }

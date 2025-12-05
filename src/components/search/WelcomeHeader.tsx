@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 
-const TEXT = 'Social Bro';
+const TEXT = 'ALOO';
+const SLOGAN = 'A Lot Of Opportunities';
 
 export function WelcomeHeader() {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -22,15 +23,15 @@ export function WelcomeHeader() {
   };
 
   return (
-    <div className="flex flex-col items-center gap-2 sm:gap-3 text-center px-4">
+    <div className="flex flex-col items-center gap-1 text-center px-4">
       <h1
-        className="flex text-2xl sm:text-3xl md:text-4xl font-medium text-white font-doto"
+        className="flex text-3xl sm:text-4xl md:text-5xl font-bold text-white font-orbitron tracking-wider"
         onMouseLeave={() => setHoveredIndex(null)}
       >
         {TEXT.split('').map((char, index) => (
           <span
             key={index}
-            className="inline-block transition-transform duration-150 ease-out"
+            className="inline-block transition-transform duration-150 ease-out cursor-default"
             style={{
               transform: `scale(${getScale(index)}) translateY(${getTranslateY(index)}px)`,
             }}
@@ -40,6 +41,9 @@ export function WelcomeHeader() {
           </span>
         ))}
       </h1>
+      <p className="text-xs sm:text-sm font-orbitron tracking-widest text-white/50">
+        {SLOGAN}
+      </p>
     </div>
   );
 }

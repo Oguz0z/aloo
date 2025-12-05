@@ -7,11 +7,13 @@ interface PreLoaderProps {
   duration?: number;
 }
 
-const TEXT = 'Social Bro';
+const TEXT = 'ALOO';
+const SLOGAN = 'A Lot Of Opportunities';
 
-export function PreLoader({ onComplete, duration = 2000 }: PreLoaderProps) {
+export function PreLoader({ onComplete, duration = 2500 }: PreLoaderProps) {
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [animatedIndex, setAnimatedIndex] = useState(-2);
+  const [showSlogan, setShowSlogan] = useState(false);
 
   const getScale = useCallback(
     (index: number) => {
@@ -49,6 +51,12 @@ export function PreLoader({ onComplete, duration = 2000 }: PreLoaderProps) {
         setAnimatedIndex((prev) => prev + 1);
       }, 80);
       return () => clearTimeout(timer);
+    } else {
+      // Show slogan after ALOO animation completes
+      const sloganTimer = setTimeout(() => {
+        setShowSlogan(true);
+      }, 100);
+      return () => clearTimeout(sloganTimer);
     }
   }, [animatedIndex]);
 
@@ -65,11 +73,11 @@ export function PreLoader({ onComplete, duration = 2000 }: PreLoaderProps) {
 
   return (
     <div
-      className={`fixed inset-0 z-[99999] flex items-center justify-center bg-black transition-opacity duration-500 ${
+      className={`fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-black transition-opacity duration-500 ${
         isFadingOut ? 'opacity-0' : 'opacity-100'
       }`}
     >
-      <h1 className="flex text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-medium text-white font-doto">
+      <h1 className="flex text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white font-orbitron tracking-wider">
         {TEXT.split('').map((char, index) => (
           <span
             key={index}
@@ -82,6 +90,13 @@ export function PreLoader({ onComplete, duration = 2000 }: PreLoaderProps) {
           </span>
         ))}
       </h1>
+      <p
+        className={`mt-3 text-sm sm:text-base md:text-lg font-orbitron tracking-widest text-white/60 transition-opacity duration-500 ${
+          showSlogan ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
+        {SLOGAN}
+      </p>
     </div>
   );
 }

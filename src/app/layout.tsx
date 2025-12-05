@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Doto } from 'next/font/google';
+import { Inter, Doto, Orbitron } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { SessionProvider } from '@/components/providers/SessionProvider';
 import './globals.css';
@@ -15,9 +15,15 @@ const doto = Doto({
   weight: '500',
 });
 
+const orbitron = Orbitron({
+  variable: '--font-orbitron',
+  subsets: ['latin'],
+  weight: ['400', '700'],
+});
+
 export const metadata: Metadata = {
-  title: 'Social Bro - Content Discovery Platform',
-  description: 'Discover and explore content across YouTube, TikTok, Instagram, and more',
+  title: 'ALOO - Local Business Lead Generation',
+  description: 'Find and manage local business leads with smart scoring and CRM pipeline',
 };
 
 export const viewport: Viewport = {
@@ -34,7 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark bg-black">
-      <body className={`${inter.variable} ${doto.variable} antialiased bg-black min-h-screen`}>
+      <body className={`${inter.variable} ${doto.variable} ${orbitron.variable} antialiased bg-black min-h-screen`}>
         <SessionProvider>{children}</SessionProvider>
         <Toaster
           position="bottom-right"
