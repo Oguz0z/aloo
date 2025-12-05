@@ -212,17 +212,17 @@ print_success "Database schema applied"
 # ===========================================
 print_step "Creating default admin user..."
 
-# Create default user via Node script
-node -e "
-const { PrismaClient } = require('./src/generated/prisma/client');
-const { PrismaBetterSqlite3 } = require('@prisma/adapter-better-sqlite3');
-const bcrypt = require('bcrypt');
+# Create default user via tsx (ESM compatible)
+npx tsx -e "
+import { PrismaClient } from './src/generated/prisma/client.js';
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
+import bcrypt from 'bcrypt';
+
+const filePath = process.env.DATABASE_URL.replace('file:', '');
+const adapter = new PrismaBetterSqlite3({ url: filePath });
+const prisma = new PrismaClient({ adapter });
 
 async function createDefaultUser() {
-  const filePath = process.env.DATABASE_URL.replace('file:', '');
-  const adapter = new PrismaBetterSqlite3({ url: filePath });
-  const prisma = new PrismaClient({ adapter });
-
   try {
     const existing = await prisma.user.findUnique({ where: { email: 'admin@aloo.com' } });
     if (!existing) {
