@@ -61,3 +61,6 @@ import-leads.ts
 Smart-opportunities.csv
 Smart-opportunities.json
 railway.json
+
+# Claude Code commands (personal)
+.claude/
